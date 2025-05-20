@@ -89,7 +89,14 @@ export class MyMCP extends McpAgent {
 		// Search Flesh and Blood TCG cards using the API
 		this.server.tool(
 			"search_fab_cards",
-			"Search for cards in the Flesh and Blood TCG. Returns a list of cards matching the search query. You can query by any words, but you should use short words because it uses partial string matching.",
+			`Search for cards in the Flesh and Blood TCG.
+
+This tool:
+- Returns a list of cards matching the search query
+- Supports searching by card name, type, or text
+- Uses partial string matching for flexible searches
+
+For best results, use short and specific search terms.`,
 			{ query: z.string() },
 			async ({ query }) => {
 				try {
@@ -148,7 +155,16 @@ export class MyMCP extends McpAgent {
 		// Get all print variations of a specific card
 		this.server.tool(
 			"get_fab_card_prints",
-			"Retrieve all print variations of a specific card. Returns information about different printings including language variants, set information, and finish types. Use the cardId obtained from the search_fab_cards tool.",
+			`Retrieve all print variations of a specific card.
+
+This tool provides:
+- Information about different printings of the same card
+- Language variants (English, Japanese, etc.)
+- Set information and release details
+- Finish types (regular, rainbow foil, etc.)
+
+Required input:
+- cardId: Obtain this from the search_fab_cards tool first`,
 			{ cardId: z.string() },
 			async ({ cardId }) => {
 				try {
@@ -205,7 +221,21 @@ export class MyMCP extends McpAgent {
 		// カード詳細情報を取得
 		this.server.tool(
 			"get_card_detail",
-			"Get detailed information about a specific card including card text in non-English languages. If you are asked about card text in a non-English language, you should use this tool before answering. If there aren't prints in a specific language, the card is not available in that language. You can get the cardId from the search_fab_cards tool and the printId from the get_fab_card_prints tool.",
+			`Get detailed information about a specific card including non-English text.
+
+This tool provides:
+- Complete card data in English and other languages (when available)
+- Card attributes (pitch, power, defense, cost)
+- Publication details (set, rarity, artist)
+- All available card variations
+
+IMPORTANT USAGE SEQUENCE:
+1. FIRST use search_fab_cards to get the cardId
+2. THEN use get_fab_card_prints with that cardId to check available print variations
+3. ONLY THEN use this tool with both the cardId and appropriate printId
+
+If a specific language variant doesn't appear in get_fab_card_prints results, 
+the card is not available in that language.`,
 			{ 
 				cardId: z.string(), 
 				printId: z.string().optional() 
