@@ -2,6 +2,7 @@ import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import axios from "axios";
+import * as cheerio from "cheerio";
 
 // カード情報のインターフェース
 interface Card {
@@ -39,6 +40,43 @@ interface CardPrint {
   }>;
 }
 
+// カード詳細情報のインターフェース
+interface CardDetail {
+  cardId: string;
+  printId: string;
+  imageUrl: string;
+  
+  // 英語情報
+  enName: string;
+  enText?: string;
+  enTypebox?: string;
+  
+  // 日本語情報
+  jaName?: string;
+  jaText?: string;
+  jaTypebox?: string;
+  
+  // カード属性
+  pitch?: string;
+  cost?: string;
+  power?: string;
+  defense?: string;
+  
+  // 出版情報
+  set?: string;
+  rarity?: string;
+  artist?: string;
+  
+  // バリエーション情報
+  variants?: Array<{
+    printId: string;
+    language: string;
+    setName: string;
+    finishType: string;
+    url: string;
+  }>;
+}
+
 // Define our MCP agent with tools
 export class MyMCP extends McpAgent {
 	server = new McpServer({
@@ -50,11 +88,16 @@ export class MyMCP extends McpAgent {
 		// Search Flesh and Blood TCG cards using the API
 		this.server.tool(
 			"search_fab_cards",
+			"Search for cards in the Flesh and Blood TCG. Returns a list of cards matching the search query. You can query by any wards, but you should use short wards because it is partial string matching.",
 			{ query: z.string() },
 			async ({ query }) => {
 				try {
-					const url = `https://cards.fabtcg.com/api/search/v1/cards/?name=${encodeURIComponent(query)}`;
+					console.log(`[search_fab_cards] 検索開始: query=${query}`);
+					const url = `https://cards.fabtcg.com/api/search/v1/cards/?q=${encodeURIComponent(query)}`;
+					console.log(`[search_fab_cards] APIリクエスト: url=${url}`);
+					
 					const response = await axios.get(url);
+					console.log(`[search_fab_cards] APIレスポンス: status=${response.status}, データ件数=${response.data.results?.length || 0}`);
 					
 					// APIからのレスポンスをパース
 					const data = response.data;
@@ -80,10 +123,17 @@ export class MyMCP extends McpAgent {
 						}],
 					};
 				} catch (error) {
-					console.error('Error searching FAB cards:', error);
 					const errorMessage = error instanceof Error 
 						? error.message 
 						: 'Unknown error occurred';
+					console.error(`[search_fab_cards] エラー発生: ${errorMessage}`);
+					if (error instanceof Error && 'response' in error) {
+						// @ts-ignore
+						const responseData = error.response?.data;
+						// @ts-ignore
+						const responseStatus = error.response?.status;
+						console.error(`[search_fab_cards] レスポンス詳細: status=${responseStatus}, data=`, responseData);
+					}
 					return {
 						content: [{ 
 							type: "text", 
@@ -97,11 +147,16 @@ export class MyMCP extends McpAgent {
 		// Get all print variations of a specific card
 		this.server.tool(
 			"get_fab_card_prints",
+			"You can get all print variations of a specific card. You can get the cardId from the search_fab_cards tool.",
 			{ cardId: z.string() },
 			async ({ cardId }) => {
 				try {
+					console.log(`[get_fab_card_prints] 検索開始: cardId=${cardId}`);
 					const url = `https://cards.fabtcg.com/api/fab/v1/prints/?card_id=${encodeURIComponent(cardId)}`;
+					console.log(`[get_fab_card_prints] APIリクエスト: url=${url}`);
+					
 					const response = await axios.get(url);
+					console.log(`[get_fab_card_prints] APIレスポンス: status=${response.status}, データ件数=${response.data.results?.length || 0}`);
 					
 					// APIからのレスポンスをパース
 					const data = response.data;
@@ -125,14 +180,163 @@ export class MyMCP extends McpAgent {
 						}],
 					};
 				} catch (error) {
-					console.error('Error fetching FAB card prints:', error);
 					const errorMessage = error instanceof Error 
 						? error.message 
 						: 'Unknown error occurred';
+					console.error(`[get_fab_card_prints] エラー発生: ${errorMessage}`);
+					if (error instanceof Error && 'response' in error) {
+						// @ts-ignore
+						const responseData = error.response?.data;
+						// @ts-ignore
+						const responseStatus = error.response?.status;
+						console.error(`[get_fab_card_prints] レスポンス詳細: status=${responseStatus}, data=`, responseData);
+					}
 					return {
 						content: [{ 
 							type: "text", 
 							text: `エラー: カードプリント情報の取得中に問題が発生しました - ${errorMessage}` 
+						}],
+					};
+				}
+			}
+		);
+
+		// カード詳細情報を取得
+		this.server.tool(
+			"get_card_detail",
+			"Get detailed information about a specific card include card text in non Englush language. If you are asked about card text in non English language, you should use this tool before answer. You can get the cardId from the search_fab_cards tool. You can also specify the printId from the get_fab_card_prints tool.",
+			{ 
+				cardId: z.string(), 
+				printId: z.string().optional() 
+			},
+			async ({ cardId, printId }: { cardId: string; printId?: string }) => {
+				try {
+					console.log(`[get_card_detail] 検索開始: cardId=${cardId}, printId=${printId || 'なし'}`);
+					let url: string;
+					
+					if (printId) {
+						// プリントIDが指定されている場合はそれを使用
+						url = `https://cards.fabtcg.com/card/${encodeURIComponent(cardId)}/${encodeURIComponent(printId)}/`;
+					} else {
+						// プリントIDが指定されていない場合はカードIDのみでアクセス
+						url = `https://cards.fabtcg.com/card/${encodeURIComponent(cardId)}/`;
+					}
+					
+					console.log(`[get_card_detail] ページリクエスト: url=${url}`);
+					const response = await axios.get(url);
+					console.log(`[get_card_detail] ページレスポンス: status=${response.status}, contentLength=${response.data.length}`);
+					
+					const $ = cheerio.load(response.data);
+					console.log(`[get_card_detail] HTML解析開始`);
+					
+					// 基本情報の抽出
+					const imageUrl = $('.card-details__face img').attr('src') || '';
+					console.log(`[get_card_detail] 画像URL: ${imageUrl}`);
+					
+					const currentPrintId = $('.card-details__variant [data-component-variant-is-current]')
+						.parent().find('[data-component-variant-print-id]').text();
+					console.log(`[get_card_detail] 現在のプリントID: ${currentPrintId || 'なし'}`);
+					
+					// 英語情報の抽出（rules タブ）
+					const rulesTab = $('[data-component-tab="rules"]');
+					const enName = rulesTab.find('.card-details-data__title-text').text().trim();
+					const enText = rulesTab.find('.card-details-data__blurb div').text().trim();
+					const enTypebox = rulesTab.find('.card-details-data__footer-text').text().trim();
+					console.log(`[get_card_detail] 英語情報: name=${enName}, text長さ=${enText.length}`);
+					
+					// 日本語情報の抽出（print タブ）
+					const printTab = $('[data-component-tab="print"]');
+					const jaName = printTab.find('.card-details-data__title-text').text().trim();
+					const jaText = printTab.find('.card-details-data__blurb div').text().trim();
+					const jaTypebox = printTab.find('.card-details-data__footer-text').text().trim();
+					console.log(`[get_card_detail] 日本語情報: name=${jaName}, text長さ=${jaText.length}`);
+					
+					// カード属性の抽出
+					const pitch = $('.card-details-data__corner:contains("ピッチ:")').text().replace(/[^0-9]/g, '') || 
+								rulesTab.find('.card-details-data__corner:first-child span:last-child').text().trim();
+					const cost = rulesTab.find('.card-details-data__corner:contains("Cost") span').text().trim();
+					const power = rulesTab.find('.card-details-data__corner:contains("パワー") span').text().trim() || 
+								rulesTab.find('.card-details-data__footer .card-details-data__corner:first-child span:last-child').text().trim();
+					const defense = rulesTab.find('.card-details-data__corner:contains("防御") span').text().trim() || 
+								rulesTab.find('.card-details-data__footer .card-details-data__corner:last-child span:first-child').text().trim();
+					
+					// 出版情報の抽出
+					const productionInfo = $('.card-details__production-details-wrapper p:first-child').text();
+					const [set, rarity] = productionInfo.split('•').map((item: string) => item.trim());
+					const artist = $('.card-details__production-details-wrapper p:last-child a').text().trim();
+					
+					// バリエーション情報の抽出
+					const variants: Array<{printId: string; language: string; setName: string; finishType: string; url: string}> = [];
+					const variantCount = $('[data-component-variant]').length;
+					console.log(`[get_card_detail] バリエーション数: ${variantCount}`);
+					
+					$('[data-component-variant]').each((_: number, element: any) => {
+						const $el = $(element);
+						const variantPrintId = $el.find('[data-component-variant-print-id]').text();
+						const variantSetName = $el.find('[data-component-variant-name]').text();
+						const variantFinishType = $el.find('[data-component-variant-finish-type-display]').text();
+						const variantUrl = $el.find('[data-component-variant-link]').text();
+						const languageMatch = variantPrintId.match(/^([A-Z]{2})_/);
+						const language = languageMatch ? languageMatch[1] : 'EN';
+						
+						if (variantPrintId && variantUrl) {
+							variants.push({
+								printId: variantPrintId,
+								language,
+								setName: variantSetName,
+								finishType: variantFinishType,
+								url: `https://cards.fabtcg.com${variantUrl}`
+							});
+						}
+					});
+					
+					console.log(`[get_card_detail] 抽出されたバリエーション数: ${variants.length}`);
+					
+					// カード詳細情報の作成
+					const cardDetail: CardDetail = {
+						cardId,
+						printId: currentPrintId || printId || '',
+						imageUrl,
+						enName,
+						enText,
+						enTypebox,
+						jaName,
+						jaText,
+						jaTypebox,
+						pitch,
+						cost,
+						power,
+						defense,
+						set,
+						rarity,
+						artist,
+						variants
+					};
+					
+					return {
+						content: [{ 
+							type: "text", 
+							text: JSON.stringify(cardDetail, null, 2)
+						}],
+					};
+				} catch (error) {
+					const errorMessage = error instanceof Error 
+						? error.message 
+						: 'Unknown error occurred';
+					console.error(`[get_card_detail] エラー発生: ${errorMessage}`);
+					if (error instanceof Error && 'response' in error) {
+						// @ts-ignore
+						const responseData = error.response?.data;
+						// @ts-ignore
+						const responseStatus = error.response?.status;
+						console.error(`[get_card_detail] レスポンス詳細: status=${responseStatus}, data=`, responseData);
+					} else if (error instanceof Error) {
+						console.error(`[get_card_detail] エラースタック: ${error.stack}`);
+					}
+					return {
+						content: [{ 
+							type: "text", 
+							text: `エラー: カード詳細情報の取得中に問題が発生しました - ${errorMessage}` 
 						}],
 					};
 				}
