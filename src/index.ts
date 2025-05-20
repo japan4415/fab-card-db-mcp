@@ -229,13 +229,12 @@ This tool provides:
 - Publication details (set, rarity, artist)
 - All available card variations
 
-IMPORTANT USAGE SEQUENCE:
-1. FIRST use search_fab_cards to get the cardId
-2. THEN use get_fab_card_prints with that cardId to check available print variations
-3. ONLY THEN use this tool with both the cardId and appropriate printId
+IMPORTANT USAGE SEQUENCE AND WARNINGS:
+1. FIRST use search_fab_cards to get the cardId.
+2. THEN use get_fab_card_prints with that cardId to check available print variations. This is the ONLY way to find the correct printId for a specific language (e.g., Japanese).
+3. ONLY THEN use this tool with both the cardId and the ACCURATE printId obtained from get_fab_card_prints.
 
-If a specific language variant doesn't appear in get_fab_card_prints results, 
-the card is not available in that language.`,
+DO NOT attempt to guess or predict the printId. If you need a card in a specific language (e.g., Japanese), you MUST use get_fab_card_prints to find the correct printId for that language. If a specific language variant (e.g. Japanese) or its printId does not appear in the get_fab_card_prints results, the card is not available in that language, and you should NOT use this tool for that language.`,
 			{ 
 				cardId: z.string(), 
 				printId: z.string().optional() 
