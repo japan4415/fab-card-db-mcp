@@ -82,13 +82,14 @@ export class MyMCP extends McpAgent {
 	server = new McpServer({
 		name: "Flesh and Blood Card Search API",
 		version: "1.0.0",
+		description: "Access card information from the Flesh and Blood Trading Card Game database"
 	});
 
 	async init() {
 		// Search Flesh and Blood TCG cards using the API
 		this.server.tool(
 			"search_fab_cards",
-			"Search for cards in the Flesh and Blood TCG. Returns a list of cards matching the search query. You can query by any wards, but you should use short wards because it is partial string matching.",
+			"Search for cards in the Flesh and Blood TCG. Returns a list of cards matching the search query. You can query by any words, but you should use short words because it uses partial string matching.",
 			{ query: z.string() },
 			async ({ query }) => {
 				try {
@@ -147,7 +148,7 @@ export class MyMCP extends McpAgent {
 		// Get all print variations of a specific card
 		this.server.tool(
 			"get_fab_card_prints",
-			"You can get all print variations of a specific card. You can get the cardId from the search_fab_cards tool.",
+			"Retrieve all print variations of a specific card. Returns information about different printings including language variants, set information, and finish types. Use the cardId obtained from the search_fab_cards tool.",
 			{ cardId: z.string() },
 			async ({ cardId }) => {
 				try {
@@ -204,7 +205,7 @@ export class MyMCP extends McpAgent {
 		// カード詳細情報を取得
 		this.server.tool(
 			"get_card_detail",
-			"Get detailed information about a specific card include card text in non Englush language. If you are asked about card text in non English language, you should use this tool before answer. You can get the cardId from the search_fab_cards tool. You can also specify the printId from the get_fab_card_prints tool.",
+			"Get detailed information about a specific card including card text in non-English languages. If you are asked about card text in a non-English language, you should use this tool before answering. If there aren't prints in a specific language, the card is not available in that language. You can get the cardId from the search_fab_cards tool and the printId from the get_fab_card_prints tool.",
 			{ 
 				cardId: z.string(), 
 				printId: z.string().optional() 
