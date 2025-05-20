@@ -1,50 +1,137 @@
-# Building a Remote MCP Server on Cloudflare (Without Auth)
+# Flesh and Blood Card Database MCP Server
 
-This example allows you to deploy a remote MCP server that doesn't require authentication on Cloudflare Workers. 
+A Model Context Protocol (MCP) server for searching and retrieving information about Flesh and Blood Trading Card Game (FAB TCG) cards. This server is deployed on Cloudflare Workers and provides tools for card search and print variation lookup.
 
-## Get started: 
+## Features
 
-[![Deploy to Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/ai/tree/main/demos/remote-mcp-authless)
+This MCP server provides the following tools:
 
-This will deploy your MCP server to a URL like: `remote-mcp-server-authless.<your-account>.workers.dev/sse`
+### 1. Card Search (`search_fab_cards`)
 
-Alternatively, you can use the command line below to get the remote MCP Server created on your local machine:
-```bash
-npm create cloudflare@latest -- my-mcp-server --template=cloudflare/ai/demos/remote-mcp-authless
+Search for Flesh and Blood cards by name. Returns detailed information about matching cards, including:
+- Card ID and name
+- Card images
+- Card attributes (pitch, cost, power, defense)
+- Card text and type information
+- Links to the official card page
+
+### 2. Print Variations Lookup (`get_fab_card_prints`)
+
+Retrieve all print variations of a specific card using its card ID. Returns information such as:
+- Print ID and associated card ID
+- Print name and display name
+- Print images (small, normal, large sizes)
+- Layout information
+- Finish types available
+
+## Deployment
+
+This project is designed to be deployed on Cloudflare Workers.
+
+### Prerequisites
+
+- Node.js and npm installed
+- Cloudflare account
+- Wrangler CLI installed (`npm install -g wrangler`)
+
+### Deployment Steps
+
+1. Clone this repository:
+   ```bash
+   git clone <repository-url>
+   cd fab-card-db-mcp
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Authenticate with Cloudflare:
+   ```bash
+   wrangler login
+   ```
+
+4. Deploy to Cloudflare Workers:
+   ```bash
+   wrangler deploy
+   ```
+
+The server will be deployed to the domain configured in wrangler.jsonc (currently `fab-card-db-mcp.discord.jp`).
+
+## Using the MCP Server
+
+### Endpoints
+
+The server exposes two main endpoints:
+- `/sse` or `/sse/message` - SSE-based MCP endpoint
+- `/mcp` - Regular MCP endpoint
+
+### Example Usage
+
+When connected to an MCP client, you can use the provided tools as follows:
+
+#### Card Search Example
+
+```javascript
+// Using the search_fab_cards tool
+const searchResults = await use_mcp_tool({
+  server_name: "Flesh and Blood Card Search API",
+  tool_name: "search_fab_cards",
+  arguments: {
+    query: "Awakening"
+  }
+});
+
+// Results will contain card information matching the search query
 ```
 
-## Customizing your MCP Server
+#### Print Variations Example
 
-To add your own [tools](https://developers.cloudflare.com/agents/model-context-protocol/tools/) to the MCP server, define each tool inside the `init()` method of `src/index.ts` using `this.server.tool(...)`. 
+```javascript
+// Using the get_fab_card_prints tool
+const printVariations = await use_mcp_tool({
+  server_name: "Flesh and Blood Card Search API",
+  tool_name: "get_fab_card_prints",
+  arguments: {
+    cardId: "CARD_ID_HERE" // Replace with an actual card ID from search results
+  }
+});
 
-## Connect to Cloudflare AI Playground
+// Results will contain all print variations for the specified card
+```
 
-You can connect to your MCP server from the Cloudflare AI Playground, which is a remote MCP client:
+## Connecting with MCP Clients
 
-1. Go to https://playground.ai.cloudflare.com/
-2. Enter your deployed MCP server URL (`remote-mcp-server-authless.<your-account>.workers.dev/sse`)
-3. You can now use your MCP tools directly from the playground!
+### Claude Desktop
 
-## Connect Claude Desktop to your MCP server
+To connect this MCP server to Claude Desktop:
 
-You can also connect to your remote MCP server from local MCP clients, by using the [mcp-remote proxy](https://www.npmjs.com/package/mcp-remote). 
-
-To connect to your MCP server from Claude Desktop, follow [Anthropic's Quickstart](https://modelcontextprotocol.io/quickstart/user) and within Claude Desktop go to Settings > Developer > Edit Config.
-
-Update with this configuration:
+1. Go to Settings > Developer > Edit Config in Claude Desktop
+2. Update the configuration with:
 
 ```json
 {
   "mcpServers": {
-    "calculator": {
+    "fab-cards": {
       "command": "npx",
       "args": [
         "mcp-remote",
-        "http://localhost:8787/sse"  // or remote-mcp-server-authless.your-account.workers.dev/sse
+        "https://fab-card-db-mcp.discord.jp/sse"  // Or your deployed URL
       ]
     }
   }
 }
 ```
 
-Restart Claude and you should see the tools become available. 
+3. Restart Claude Desktop to access the FAB card search tools
+
+### Other MCP Clients
+
+For other MCP clients, configure them to connect to:
+- `https://fab-card-db-mcp.discord.jp/sse` (for SSE-based connections)
+- `https://fab-card-db-mcp.discord.jp/mcp` (for regular MCP connections)
+
+## License
+
+See the [LICENSE](LICENSE) file for details.
