@@ -2364,7 +2364,7 @@ __metadata:
     cheerio: "npm:^1.0.0"
     typescript: "npm:^5.8.3"
     wrangler: "npm:^4.15.2"
-    zod: "npm:^3.25.5"
+    zod: "npm:^3.24.4"
   languageName: unknown
   linkType: soft
 
@@ -3088,7 +3088,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^3.23.8, zod@npm:^3.24.4, zod@npm:^3.25.5":
+"zod@npm:^3.23.8, zod@npm:^3.24.4":
   version: 3.25.5
   resolution: "zod@npm:3.25.5"
   checksum: 10c0/17e1aed59cae803aa1c69d3e905e7b1b2ea4ae95eb9aaa599086c3e10bbfbc61f675510b0d668c28d9894a64b55dbe35af6c178ba8f8f2362948c23980b04f55
