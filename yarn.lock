@@ -537,13 +537,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@modelcontextprotocol/sdk@npm:^1.11.0, @modelcontextprotocol/sdk@npm:^1.11.1":
-  version: 1.11.1
-  resolution: "@modelcontextprotocol/sdk@npm:1.11.1"
+"@modelcontextprotocol/sdk@npm:^1.11.1, @modelcontextprotocol/sdk@npm:^1.11.2":
+  version: 1.11.4
+  resolution: "@modelcontextprotocol/sdk@npm:1.11.4"
   dependencies:
+    ajv: "npm:^8.17.1"
     content-type: "npm:^1.0.5"
     cors: "npm:^2.8.5"
-    cross-spawn: "npm:^7.0.3"
+    cross-spawn: "npm:^7.0.5"
     eventsource: "npm:^3.0.2"
     express: "npm:^5.0.1"
     express-rate-limit: "npm:^7.5.0"
@@ -551,7 +552,7 @@ __metadata:
     raw-body: "npm:^3.0.0"
     zod: "npm:^3.23.8"
     zod-to-json-schema: "npm:^3.24.1"
-  checksum: 10c0/43ae2c8ebcc55a0f050f94fa325dfcb038325fd3b11d7c0ca2bc005d41a007f0039e90632f12ebf316e17d7a002233bc6e62f4d4626bf84edb24bd580c47671f
+  checksum: 10c0/797694937e65ccc02e8dc63db711d9d96fbc49b49e6d246e6fed95d8d2bfe98ef203207224e39c9fc3b54da182da865a5d311ea06ef939c5c57ce0cd27c0f546
   languageName: node
   linkType: hard
 
@@ -647,24 +648,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"agents@npm:^0.0.80":
-  version: 0.0.80
-  resolution: "agents@npm:0.0.80"
+"agents@npm:^0.0.88":
+  version: 0.0.88
+  resolution: "agents@npm:0.0.88"
   dependencies:
-    "@modelcontextprotocol/sdk": "npm:^1.11.0"
-    ai: "npm:^4.3.14"
+    "@modelcontextprotocol/sdk": "npm:^1.11.2"
+    ai: "npm:^4.3.15"
     cron-schedule: "npm:^5.0.4"
     nanoid: "npm:^5.1.5"
-    partyserver: "npm:^0.0.70"
-    partysocket: "npm:1.1.3"
+    partyserver: "npm:^0.0.71"
+    partysocket: "npm:1.1.4"
     zod: "npm:^3.24.4"
   peerDependencies:
     react: "*"
-  checksum: 10c0/629b2f273fe2295cf4501f26f5dba4838577920122edc8971adef87634430182acec2fadfa9f6896c9ee6b8816084be4f1af283c2e6551a3c81e552ff7a5f29d
+  checksum: 10c0/f01b564976fbbb77340b30ed65ee8b039db714bc8ad317a8b027f2ff418e1a41bb5cfbbd79a69a97eb9505a8cffbeaffc03fedefa25b28a21258002051789521
   languageName: node
   linkType: hard
 
-"ai@npm:^4.3.14":
+"ai@npm:^4.3.15":
   version: 4.3.15
   resolution: "ai@npm:4.3.15"
   dependencies:
@@ -681,6 +682,18 @@ __metadata:
     react:
       optional: true
   checksum: 10c0/47f9d240c1569957d62a101c190e20950c7e3a4c9d34e3806509669b9a942aa8f6b1a9724ec14bf7cd5a327960e6caf49760eb660db8f13bd0760c7f4d2a7090
+  languageName: node
+  linkType: hard
+
+"ajv@npm:^8.17.1":
+  version: 8.17.1
+  resolution: "ajv@npm:8.17.1"
+  dependencies:
+    fast-deep-equal: "npm:^3.1.3"
+    fast-uri: "npm:^3.0.1"
+    json-schema-traverse: "npm:^1.0.0"
+    require-from-string: "npm:^2.0.2"
+  checksum: 10c0/ec3ba10a573c6b60f94639ffc53526275917a2df6810e4ab5a6b959d87459f9ef3f00d5e7865b82677cb7d21590355b34da14d1d0b9c32d75f95a187e76fff35
   languageName: node
   linkType: hard
 
@@ -974,7 +987,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cross-spawn@npm:^7.0.3, cross-spawn@npm:^7.0.6":
+"cross-spawn@npm:^7.0.5, cross-spawn@npm:^7.0.6":
   version: 7.0.6
   resolution: "cross-spawn@npm:7.0.6"
   dependencies:
@@ -1432,6 +1445,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fast-deep-equal@npm:^3.1.3":
+  version: 3.1.3
+  resolution: "fast-deep-equal@npm:3.1.3"
+  checksum: 10c0/40dedc862eb8992c54579c66d914635afbec43350afbbe991235fdcb4e3a8d5af1b23ae7e79bef7d4882d0ecee06c3197488026998fb19f72dc95acff1d1b1d0
+  languageName: node
+  linkType: hard
+
+"fast-uri@npm:^3.0.1":
+  version: 3.0.6
+  resolution: "fast-uri@npm:3.0.6"
+  checksum: 10c0/74a513c2af0584448aee71ce56005185f81239eab7a2343110e5bad50c39ad4fb19c5a6f99783ead1cac7ccaf3461a6034fda89fffa2b30b6d99b9f21c2f9d29
+  languageName: node
+  linkType: hard
+
 "fdir@npm:^6.4.4":
   version: 6.4.4
   resolution: "fdir@npm:6.4.4"
@@ -1783,6 +1810,13 @@ __metadata:
   version: 1.1.0
   resolution: "jsbn@npm:1.1.0"
   checksum: 10c0/4f907fb78d7b712e11dea8c165fe0921f81a657d3443dde75359ed52eb2b5d33ce6773d97985a089f09a65edd80b11cb75c767b57ba47391fee4c969f7215c96
+  languageName: node
+  linkType: hard
+
+"json-schema-traverse@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "json-schema-traverse@npm:1.0.0"
+  checksum: 10c0/71e30015d7f3d6dc1c316d6298047c8ef98a06d31ad064919976583eb61e1018a60a0067338f0f79cabc00d84af3fcc489bd48ce8a46ea165d9541ba17fb30c6
   languageName: node
   linkType: hard
 
@@ -2178,23 +2212,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"partyserver@npm:^0.0.70":
-  version: 0.0.70
-  resolution: "partyserver@npm:0.0.70"
+"partyserver@npm:^0.0.71":
+  version: 0.0.71
+  resolution: "partyserver@npm:0.0.71"
   dependencies:
     nanoid: "npm:^5.1.5"
   peerDependencies:
     "@cloudflare/workers-types": ^4.20240729.0
-  checksum: 10c0/2ffa6682899e889a83584bdceb4e8a286b2181ba67b813388e4d4858731df607b76ac12e1bb40d5e2a77ffcc189bd2c2205d2da1ec13a87a54c491d93a9dd69f
+  checksum: 10c0/aeba7bd676a088b1ad75f8c3b74e3d79ce7ae2e34326bc08a27fe0b8ef1d8f2d0dd29937e0a67d414925ddb462ec471de69a7c8e4588e6c254a79fe5da033f55
   languageName: node
   linkType: hard
 
-"partysocket@npm:1.1.3":
-  version: 1.1.3
-  resolution: "partysocket@npm:1.1.3"
+"partysocket@npm:1.1.4":
+  version: 1.1.4
+  resolution: "partysocket@npm:1.1.4"
   dependencies:
     event-target-polyfill: "npm:^0.0.4"
-  checksum: 10c0/228cfbe06a8af424ce61e15bd0ddf7b1d928075e7040cb7e73271e7f348e4e524e67623d7d02e28890807de9e0ab363129e0bc978b6e8a2bec3edb327812fbf5
+  checksum: 10c0/d859bcaef5f5e8be0f383140a896a41e78c95fc2166002d2a60f09168c720d78864e8f8e3251ed5146d46bf9487102dd9c81d34893c811bfc8ea64f7236f2fed
   languageName: node
   linkType: hard
 
@@ -2325,7 +2359,7 @@ __metadata:
   dependencies:
     "@modelcontextprotocol/sdk": "npm:^1.11.1"
     "@types/node": "npm:^22.15.19"
-    agents: "npm:^0.0.80"
+    agents: "npm:^0.0.88"
     axios: "npm:^1.9.0"
     cheerio: "npm:^1.0.0"
     typescript: "npm:^5.8.3"
@@ -2333,6 +2367,13 @@ __metadata:
     zod: "npm:^3.24.4"
   languageName: unknown
   linkType: soft
+
+"require-from-string@npm:^2.0.2":
+  version: 2.0.2
+  resolution: "require-from-string@npm:2.0.2"
+  checksum: 10c0/aaa267e0c5b022fc5fd4eef49d8285086b15f2a1c54b28240fdf03599cbd9c26049fee3eab894f2e1f6ca65e513b030a7c264201e3f005601e80c49fb2937ce2
+  languageName: node
+  linkType: hard
 
 "retry@npm:^0.12.0":
   version: 0.12.0
