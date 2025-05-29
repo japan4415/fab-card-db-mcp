@@ -8,10 +8,8 @@ import pino from "pino";
 // ロガー設定
 const logger = pino({
 	level: 'info',
-	formatters: {
-		level: (label: string) => {
-			return { level: label };
-		},
+	browser: {
+		asObject: true,
 	},
 	timestamp: pino.stdTimeFunctions.isoTime,
 });
