@@ -3,6 +3,18 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import axios from "axios";
 import * as cheerio from "cheerio";
+import pino from "pino";
+
+// ロガー設定
+const logger = pino({
+	level: 'info',
+	formatters: {
+		level: (label: string) => {
+			return { level: label };
+		},
+	},
+	timestamp: pino.stdTimeFunctions.isoTime,
+});
 
 // カード情報のインターフェース
 interface Card {
@@ -100,12 +112,26 @@ For best results, use short and specific search terms.`,
 			{ query: z.string() },
 			async ({ query }) => {
 				try {
-					console.log(`[search_fab_cards] 検索開始: query=${query}`);
+					logger.info({
+						tool: 'search_fab_cards',
+						action: 'search_start',
+						query: query
+					}, 'カード検索開始');
+					
 					const url = `https://cards.fabtcg.com/api/search/v1/cards/?q=${encodeURIComponent(query)}`;
-					console.log(`[search_fab_cards] APIリクエスト: url=${url}`);
+					logger.info({
+						tool: 'search_fab_cards',
+						action: 'api_request',
+						url: url
+					}, 'API リクエスト送信');
 					
 					const response = await axios.get(url);
-					console.log(`[search_fab_cards] APIレスポンス: status=${response.status}, データ件数=${response.data.results?.length || 0}`);
+					logger.info({
+						tool: 'search_fab_cards',
+						action: 'api_response',
+						status: response.status,
+						resultCount: response.data.results?.length || 0
+					}, 'API レスポンス受信');
 					
 					// APIからのレスポンスをパース
 					const data = response.data;
@@ -134,14 +160,27 @@ For best results, use short and specific search terms.`,
 					const errorMessage = error instanceof Error 
 						? error.message 
 						: 'Unknown error occurred';
-					console.error(`[search_fab_cards] エラー発生: ${errorMessage}`);
+					
+					logger.error({
+						tool: 'search_fab_cards',
+						action: 'error',
+						error: errorMessage,
+						query: query
+					}, 'カード検索中にエラーが発生');
+					
 					if (error instanceof Error && 'response' in error) {
 						// @ts-ignore
 						const responseData = error.response?.data;
 						// @ts-ignore
 						const responseStatus = error.response?.status;
-						console.error(`[search_fab_cards] レスポンス詳細: status=${responseStatus}, data=`, responseData);
+						logger.error({
+							tool: 'search_fab_cards',
+							action: 'api_error_detail',
+							status: responseStatus,
+							responseData: responseData
+						}, 'API エラー詳細');
 					}
+					
 					return {
 						content: [{ 
 							type: "text", 
@@ -168,12 +207,26 @@ Required input:
 			{ cardId: z.string() },
 			async ({ cardId }) => {
 				try {
-					console.log(`[get_fab_card_prints] 検索開始: cardId=${cardId}`);
+					logger.info({
+						tool: 'get_fab_card_prints',
+						action: 'search_start',
+						cardId: cardId
+					}, 'カードプリント検索開始');
+					
 					const url = `https://cards.fabtcg.com/api/fab/v1/prints/?card_id=${encodeURIComponent(cardId)}`;
-					console.log(`[get_fab_card_prints] APIリクエスト: url=${url}`);
+					logger.info({
+						tool: 'get_fab_card_prints',
+						action: 'api_request',
+						url: url
+					}, 'API リクエスト送信');
 					
 					const response = await axios.get(url);
-					console.log(`[get_fab_card_prints] APIレスポンス: status=${response.status}, データ件数=${response.data.results?.length || 0}`);
+					logger.info({
+						tool: 'get_fab_card_prints',
+						action: 'api_response',
+						status: response.status,
+						resultCount: response.data.results?.length || 0
+					}, 'API レスポンス受信');
 					
 					// APIからのレスポンスをパース
 					const data = response.data;
@@ -200,14 +253,27 @@ Required input:
 					const errorMessage = error instanceof Error 
 						? error.message 
 						: 'Unknown error occurred';
-					console.error(`[get_fab_card_prints] エラー発生: ${errorMessage}`);
+					
+					logger.error({
+						tool: 'get_fab_card_prints',
+						action: 'error',
+						error: errorMessage,
+						cardId: cardId
+					}, 'カードプリント取得中にエラーが発生');
+					
 					if (error instanceof Error && 'response' in error) {
 						// @ts-ignore
 						const responseData = error.response?.data;
 						// @ts-ignore
 						const responseStatus = error.response?.status;
-						console.error(`[get_fab_card_prints] レスポンス詳細: status=${responseStatus}, data=`, responseData);
+						logger.error({
+							tool: 'get_fab_card_prints',
+							action: 'api_error_detail',
+							status: responseStatus,
+							responseData: responseData
+						}, 'API エラー詳細');
 					}
+					
 					return {
 						content: [{ 
 							type: "text", 
@@ -241,7 +307,13 @@ DO NOT attempt to guess or predict the printId. If you need a card in a specific
 			},
 			async ({ cardId, printId }: { cardId: string; printId?: string }) => {
 				try {
-					console.log(`[get_card_detail] 検索開始: cardId=${cardId}, printId=${printId || 'なし'}`);
+					logger.info({
+						tool: 'get_card_detail',
+						action: 'detail_start',
+						cardId: cardId,
+						printId: printId || null
+					}, 'カード詳細取得開始');
+					
 					let url: string;
 					
 					if (printId) {
@@ -252,34 +324,65 @@ DO NOT attempt to guess or predict the printId. If you need a card in a specific
 						url = `https://cards.fabtcg.com/card/${encodeURIComponent(cardId)}/`;
 					}
 					
-					console.log(`[get_card_detail] ページリクエスト: url=${url}`);
+					logger.info({
+						tool: 'get_card_detail',
+						action: 'page_request',
+						url: url
+					}, 'ページリクエスト送信');
+					
 					const response = await axios.get(url);
-					console.log(`[get_card_detail] ページレスポンス: status=${response.status}, contentLength=${response.data.length}`);
+					logger.info({
+						tool: 'get_card_detail',
+						action: 'page_response',
+						status: response.status,
+						contentLength: response.data.length
+					}, 'ページレスポンス受信');
 					
 					const $ = cheerio.load(response.data);
-					console.log(`[get_card_detail] HTML解析開始`);
+					logger.info({
+						tool: 'get_card_detail',
+						action: 'html_parse_start'
+					}, 'HTML解析開始');
 					
 					// 基本情報の抽出
 					const imageUrl = $('.card-details__face img').attr('src') || '';
-					console.log(`[get_card_detail] 画像URL: ${imageUrl}`);
+					logger.debug({
+						tool: 'get_card_detail',
+						action: 'extract_image',
+						imageUrl: imageUrl
+					}, '画像URL抽出');
 					
 					const currentPrintId = $('.card-details__variant [data-component-variant-is-current]')
 						.parent().find('[data-component-variant-print-id]').text();
-					console.log(`[get_card_detail] 現在のプリントID: ${currentPrintId || 'なし'}`);
+					logger.debug({
+						tool: 'get_card_detail',
+						action: 'extract_print_id',
+						currentPrintId: currentPrintId || null
+					}, '現在のプリントID抽出');
 					
 					// 英語情報の抽出（rules タブ）
 					const rulesTab = $('[data-component-tab="rules"]');
 					const enName = rulesTab.find('.card-details-data__title-text').text().trim();
 					const enText = rulesTab.find('.card-details-data__blurb div').text().trim();
 					const enTypebox = rulesTab.find('.card-details-data__footer-text').text().trim();
-					console.log(`[get_card_detail] 英語情報: name=${enName}, text長さ=${enText.length}`);
+					logger.debug({
+						tool: 'get_card_detail',
+						action: 'extract_english_info',
+						enName: enName,
+						enTextLength: enText.length
+					}, '英語情報抽出');
 					
 					// 日本語情報の抽出（print タブ）
 					const printTab = $('[data-component-tab="print"]');
 					const jaName = printTab.find('.card-details-data__title-text').text().trim();
 					const jaText = printTab.find('.card-details-data__blurb div').text().trim();
 					const jaTypebox = printTab.find('.card-details-data__footer-text').text().trim();
-					console.log(`[get_card_detail] 日本語情報: name=${jaName}, text長さ=${jaText.length}`);
+					logger.debug({
+						tool: 'get_card_detail',
+						action: 'extract_japanese_info',
+						jaName: jaName,
+						jaTextLength: jaText.length
+					}, '日本語情報抽出');
 					
 					// カード属性の抽出
 					const pitch = $('.card-details-data__corner:contains("ピッチ:")').text().replace(/[^0-9]/g, '') || 
@@ -298,7 +401,11 @@ DO NOT attempt to guess or predict the printId. If you need a card in a specific
 					// バリエーション情報の抽出
 					const variants: Array<{printId: string; language: string; setName: string; finishType: string; url: string}> = [];
 					const variantCount = $('[data-component-variant]').length;
-					console.log(`[get_card_detail] バリエーション数: ${variantCount}`);
+					logger.debug({
+						tool: 'get_card_detail',
+						action: 'variant_count_check',
+						variantCount: variantCount
+					}, 'バリエーション数確認');
 					
 					$('[data-component-variant]').each((_: number, element: any) => {
 						const $el = $(element);
@@ -320,7 +427,11 @@ DO NOT attempt to guess or predict the printId. If you need a card in a specific
 						}
 					});
 					
-					console.log(`[get_card_detail] 抽出されたバリエーション数: ${variants.length}`);
+					logger.debug({
+						tool: 'get_card_detail',
+						action: 'variants_extracted',
+						variantCount: variants.length
+					}, 'バリエーション抽出完了');
 					
 					// カード詳細情報の作成
 					const cardDetail: CardDetail = {
@@ -353,16 +464,34 @@ DO NOT attempt to guess or predict the printId. If you need a card in a specific
 					const errorMessage = error instanceof Error 
 						? error.message 
 						: 'Unknown error occurred';
-					console.error(`[get_card_detail] エラー発生: ${errorMessage}`);
+					
+					logger.error({
+						tool: 'get_card_detail',
+						action: 'error',
+						error: errorMessage,
+						cardId: cardId,
+						printId: printId || null
+					}, 'カード詳細取得中にエラーが発生');
+					
 					if (error instanceof Error && 'response' in error) {
 						// @ts-ignore
 						const responseData = error.response?.data;
 						// @ts-ignore
 						const responseStatus = error.response?.status;
-						console.error(`[get_card_detail] レスポンス詳細: status=${responseStatus}, data=`, responseData);
+						logger.error({
+							tool: 'get_card_detail',
+							action: 'api_error_detail',
+							status: responseStatus,
+							responseData: responseData
+						}, 'API エラー詳細');
 					} else if (error instanceof Error) {
-						console.error(`[get_card_detail] エラースタック: ${error.stack}`);
+						logger.error({
+							tool: 'get_card_detail',
+							action: 'error_stack',
+							stack: error.stack
+						}, 'エラースタック情報');
 					}
+					
 					return {
 						content: [{ 
 							type: "text", 
