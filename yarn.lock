@@ -599,12 +599,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22.15.19":
-  version: 22.15.19
-  resolution: "@types/node@npm:22.15.19"
+"@types/node@npm:^22.15.28":
+  version: 22.15.28
+  resolution: "@types/node@npm:22.15.28"
   dependencies:
     undici-types: "npm:~6.21.0"
-  checksum: 10c0/8ef52fa1a91b1c8891616d46f3921a9f3c65ad1c6bb62db7899c8c28643c13bf9d607a2403b1e5aceb3e6fa6749efc9e0ba5c39618a4872da6946437b0edbfbe
+  checksum: 10c0/5d540f44a421edf57d492c5c8f1dcbc4eb1d07f820501848e958c64a83cdb76bebf1d0456d2677c3dc37b94f3fde054b76c880bdd88e19518ae87b05a72bac3c
   languageName: node
   linkType: hard
 
@@ -2444,7 +2444,7 @@ __metadata:
   resolution: "remote-mcp-server-authless@workspace:."
   dependencies:
     "@modelcontextprotocol/sdk": "npm:^1.11.1"
-    "@types/node": "npm:^22.15.19"
+    "@types/node": "npm:^22.15.28"
     agents: "npm:^0.0.94"
     axios: "npm:^1.9.0"
     cheerio: "npm:^1.0.0"
