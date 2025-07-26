@@ -665,9 +665,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"agents@npm:^0.0.108":
-  version: 0.0.108
-  resolution: "agents@npm:0.0.108"
+"agents@npm:^0.0.109":
+  version: 0.0.109
+  resolution: "agents@npm:0.0.109"
   dependencies:
     "@modelcontextprotocol/sdk": "npm:^1.13.3"
     ai: "npm:^4.3.16"
@@ -679,7 +679,7 @@ __metadata:
     zod: "npm:^3.25.67"
   peerDependencies:
     react: "*"
-  checksum: 10c0/eab25bae6688f50af5615f6f2bec982806d43350d769b635a31767099a1d14878f582ee78d9730db2487f99f566c1457c0b9462421879b9f2dcf16944f0db094
+  checksum: 10c0/a11e6415bbfc0b2e5bd6fdd298f10697af116e07040283eb5ad4fd8843a5d5d4c5972353feabbfb08484640f91da66cb67c6e3b09f6cbd1e7f598612c27453f3
   languageName: node
   linkType: hard
 
@@ -2489,13 +2489,13 @@ __metadata:
   dependencies:
     "@modelcontextprotocol/sdk": "npm:^1.11.1"
     "@types/node": "npm:^22.15.19"
-    agents: "npm:^0.0.108"
+    agents: "npm:^0.0.109"
     axios: "npm:^1.9.0"
     cheerio: "npm:^1.0.0"
     pino: "npm:^9.7.0"
     typescript: "npm:^5.8.3"
     wrangler: "npm:^4.15.2"
-    zod: "npm:^4.0.5"
+    zod: "npm:^4.0.0"
   languageName: unknown
   linkType: soft
 
@@ -3260,7 +3260,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^4.0.5":
+"zod@npm:^4.0.0":
   version: 4.0.5
   resolution: "zod@npm:4.0.5"
   checksum: 10c0/59449d731ca63849b6bcb14300aa6e2f042d440b3ed294b45c248519aec78780f85a5d1939a62c2ce82e9dc60afca77c8005e0a98d7517b0c2586d6c76940424
