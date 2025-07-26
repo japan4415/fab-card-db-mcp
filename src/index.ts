@@ -1,4 +1,3 @@
-import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import axios from "axios";
@@ -87,8 +86,8 @@ interface CardDetail {
   }>;
 }
 
-// Define our MCP agent with tools
-export class MyMCP extends McpAgent {
+// Define our MCP server
+export class MyMCP {
 	server = new McpServer({
 		name: "Flesh and Blood Card Search API",
 		version: "1.0.0",
@@ -96,6 +95,7 @@ export class MyMCP extends McpAgent {
 	});
 
 	async init() {
+		
 		// Search Flesh and Blood TCG cards using the API
 		this.server.tool(
 			"search_fab_cards",
@@ -303,7 +303,8 @@ DO NOT attempt to guess or predict the printId. If you need a card in a specific
 				cardId: z.string(), 
 				printId: z.string().optional() 
 			},
-			async ({ cardId, printId }: { cardId: string; printId?: string }) => {
+			async (args: any) => {
+				const { cardId, printId } = args;
 				try {
 					logger.info({
 						tool: 'get_card_detail',
@@ -502,18 +503,55 @@ DO NOT attempt to guess or predict the printId. If you need a card in a specific
 	}
 }
 
+const mcpInstance = new MyMCP();
+
 export default {
-	fetch(request: Request, env: Env, ctx: ExecutionContext) {
+	async fetch(request: Request): Promise<Response> {
+		await mcpInstance.init();
+		
 		const url = new URL(request.url);
 
-		if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-			// @ts-ignore
-			return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
-		}
-
-		if (url.pathname === "/mcp") {
-			// @ts-ignore
-			return MyMCP.serve("/mcp").fetch(request, env, ctx);
+		if (url.pathname === "/mcp" || url.pathname === "/") {
+			// Handle MCP requests via WebSocket or Server-Sent Events
+			if (request.headers.get("upgrade") === "websocket") {
+				// WebSocket connection for MCP
+				const webSocketPair = new WebSocketPair();
+				const [client, server] = Object.values(webSocketPair);
+				
+				// Accept the WebSocket connection
+				server.accept();
+				
+				// Handle MCP communication through WebSocket
+				server.addEventListener('message', async (event) => {
+					try {
+						const requestData = JSON.parse(event.data as string);
+						// Process the MCP request here
+						const response = { jsonrpc: "2.0", id: requestData.id, result: {} };
+						server.send(JSON.stringify(response));
+					} catch (error) {
+						const errorResponse = { 
+							jsonrpc: "2.0", 
+							id: null, 
+							error: { code: -32700, message: "Parse error" } 
+						};
+						server.send(JSON.stringify(errorResponse));
+					}
+				});
+				
+				return new Response(null, {
+					status: 101,
+					webSocket: client,
+				});
+			}
+			
+			// Handle regular HTTP requests
+			return new Response(JSON.stringify({
+				name: "Flesh and Blood Card Search API",
+				version: "1.0.0",
+				description: "Access card information from the Flesh and Blood Trading Card Game database"
+			}), {
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
 
 		return new Response("Not found", { status: 404 });
