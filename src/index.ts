@@ -499,6 +499,180 @@ DO NOT attempt to guess or predict the printId. If you need a card in a specific
 				}
 			}
 		);
+
+		// OpenAI ChatGPT compatible search tool
+		this.server.tool(
+			"search",
+			`Search for documents using OpenAI Vector Store search format.
+			
+This tool searches through the Flesh and Blood card database to find semantically relevant matches.
+Returns a list of search results with basic information. Use the fetch tool to get
+complete document content.`,
+			{ query: z.string() },
+			async ({ query }) => {
+				try {
+					logger.info({
+						tool: 'search',
+						action: 'search_start',
+						query: query
+					}, 'OpenAI形式検索開始');
+					
+					const url = `https://cards.fabtcg.com/api/search/v1/cards/?q=${encodeURIComponent(query)}`;
+					const response = await axios.get(url);
+					
+					const data = response.data;
+					const results = data.results.slice(0, 10).map((card: any) => ({
+						id: card.card_id,
+						title: card.display_name || card.name,
+						text: `${card.typebox || ''} ${card.text || ''}`.trim() || card.display_name,
+						url: `https://cards.fabtcg.com${card.url}`
+					}));
+					
+					logger.info({
+						tool: 'search',
+						action: 'search_complete',
+						resultCount: results.length
+					}, 'OpenAI形式検索完了');
+					
+					return {
+						content: [{ 
+							type: "text", 
+							text: JSON.stringify({ results }, null, 2)
+						}],
+					};
+				} catch (error) {
+					const errorMessage = error instanceof Error 
+						? error.message 
+						: 'Unknown error occurred';
+					
+					logger.error({
+						tool: 'search',
+						action: 'error',
+						error: errorMessage,
+						query: query
+					}, 'OpenAI形式検索中にエラーが発生');
+					
+					return {
+						content: [{ 
+							type: "text", 
+							text: JSON.stringify({ results: [] }, null, 2)
+						}],
+					};
+				}
+			}
+		);
+
+		// OpenAI ChatGPT compatible fetch tool
+		this.server.tool(
+			"fetch",
+			`Retrieve complete document content by ID for detailed analysis and citation.
+			
+This tool fetches the full document content from Flesh and Blood card database.
+Use this after finding relevant documents with the search tool to get complete
+information for analysis and proper citation.`,
+			{ id: z.string() },
+			async ({ id }) => {
+				try {
+					logger.info({
+						tool: 'fetch',
+						action: 'fetch_start',
+						id: id
+					}, 'OpenAI形式取得開始');
+					
+					// First get basic card info
+					const searchUrl = `https://cards.fabtcg.com/api/search/v1/cards/?q=${encodeURIComponent(id)}`;
+					const searchResponse = await axios.get(searchUrl);
+					
+					// Find exact match by card_id
+					const card = searchResponse.data.results.find((c: any) => c.card_id === id);
+					if (!card) {
+						throw new Error(`Card with ID ${id} not found`);
+					}
+					
+					// Get detailed card information by scraping the card page
+					const cardUrl = `https://cards.fabtcg.com/card/${encodeURIComponent(id)}/`;
+					const pageResponse = await axios.get(cardUrl);
+					const $ = cheerio.load(pageResponse.data);
+					
+					// Extract detailed information
+					const rulesTab = $('[data-component-tab="rules"]');
+					const enName = rulesTab.find('.card-details-data__title-text').text().trim();
+					const enText = rulesTab.find('.card-details-data__blurb div').text().trim();
+					const enTypebox = rulesTab.find('.card-details-data__footer-text').text().trim();
+					
+					// Get attributes
+					const pitch = card.pitch || '';
+					const cost = card.cost || '';
+					const power = card.power || '';
+					const defense = card.defense || '';
+					
+					// Build comprehensive text content
+					let fullText = `Card Name: ${enName}\n`;
+					if (enTypebox) fullText += `Type: ${enTypebox}\n`;
+					if (pitch) fullText += `Pitch: ${pitch}\n`;
+					if (cost) fullText += `Cost: ${cost}\n`;
+					if (power) fullText += `Power: ${power}\n`;
+					if (defense) fullText += `Defense: ${defense}\n`;
+					if (enText) fullText += `\nCard Text:\n${enText}`;
+					
+					// Get publication info
+					const productionInfo = $('.card-details__production-details-wrapper p:first-child').text();
+					const [set, rarity] = productionInfo.split('•').map((item: string) => item.trim());
+					const artist = $('.card-details__production-details-wrapper p:last-child a').text().trim();
+					
+					const metadata = {
+						cardId: id,
+						pitch,
+						cost,
+						power,
+						defense,
+						set,
+						rarity,
+						artist,
+						typebox: enTypebox
+					};
+					
+					const result = {
+						id,
+						title: enName || card.display_name || card.name,
+						text: fullText,
+						url: `https://cards.fabtcg.com${card.url}`,
+						metadata
+					};
+					
+					logger.info({
+						tool: 'fetch',
+						action: 'fetch_complete',
+						id: id
+					}, 'OpenAI形式取得完了');
+					
+					return {
+						content: [{ 
+							type: "text", 
+							text: JSON.stringify(result, null, 2)
+						}],
+					};
+				} catch (error) {
+					const errorMessage = error instanceof Error 
+						? error.message 
+						: 'Unknown error occurred';
+					
+					logger.error({
+						tool: 'fetch',
+						action: 'error',
+						error: errorMessage,
+						id: id
+					}, 'OpenAI形式取得中にエラーが発生');
+					
+					return {
+						content: [{ 
+							type: "text", 
+							text: `エラー: ドキュメントの取得中に問題が発生しました - ${errorMessage}` 
+						}],
+					};
+				}
+			}
+		);
 	}
 }
 
