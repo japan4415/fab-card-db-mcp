@@ -677,13 +677,47 @@ information for analysis and proper citation.`,
 }
 
 export default {
-	fetch(request: Request, env: Env, ctx: ExecutionContext) {
-		const url = new URL(request.url);
+        fetch(request: Request, env: Env, ctx: ExecutionContext) {
+                const url = new URL(request.url);
 
-		if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-			// @ts-ignore
-			return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
-		}
+                if (url.pathname === "/.well-known/mcp.json") {
+                        if (request.method !== "GET" && request.method !== "HEAD") {
+                                return new Response(null, {
+                                        status: 405,
+                                        headers: {
+                                                Allow: "GET, HEAD",
+                                        },
+                                });
+                        }
+
+                        const origin = url.origin;
+                        const manifest = {
+                                name: "Flesh and Blood Card Search API",
+                                version: "1.0.0",
+                                description:
+                                        "A Model Context Protocol server that provides search and lookup tools for the Flesh and Blood Trading Card Game database.",
+                                endpoints: {
+                                        sse: `${origin}/sse`,
+                                        rpc: `${origin}/mcp`,
+                                },
+                        };
+
+                        return new Response(
+                                request.method === "HEAD" ? null : JSON.stringify(manifest, null, 2),
+                                {
+                                        status: 200,
+                                        headers: {
+                                                "content-type": "application/json; charset=utf-8",
+                                                "cache-control": "public, max-age=300",
+                                        },
+                                },
+                        );
+                }
+
+                if (url.pathname === "/sse" || url.pathname === "/sse/message") {
+                        // @ts-ignore
+                        return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
+                }
 
 		if (url.pathname === "/mcp") {
 			// @ts-ignore
