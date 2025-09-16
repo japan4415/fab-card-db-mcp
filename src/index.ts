@@ -697,8 +697,8 @@ export default {
                                 description:
                                         "A Model Context Protocol server that provides search and lookup tools for the Flesh and Blood Trading Card Game database.",
                                 endpoints: {
-                                        sse: `${origin}/sse`,
-                                        rpc: `${origin}/mcp`,
+                                        sse: { url: `${origin}/sse` },
+                                        rpc: { url: `${origin}/mcp` },
                                 },
                         };
 
