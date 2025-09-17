@@ -3,14 +3,6 @@
   "extends": [
     "config:recommended"
   ],
-  "packageRules": [
-    {
-      "matchManagers": [
-        "npm"
-      ],
-      "enabled": false
-    }
-  ],
   "postUpgradeTasks": {
     "executionMode": "branch",
     "commands": [
