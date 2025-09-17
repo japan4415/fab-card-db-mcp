@@ -2,5 +2,20 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
-  ]
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "npm"
+      ],
+      "enabled": false
+    }
+  ],
+  "postUpgradeTasks": {
+    "executionMode": "branch",
+    "commands": [
+      "corepack enable",
+      "yarn install --mode=update-lockfile"
+    ]
+  }
 }
