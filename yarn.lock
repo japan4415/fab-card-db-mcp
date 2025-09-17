@@ -547,8 +547,8 @@ __metadata:
   linkType: hard
 
 "@modelcontextprotocol/sdk@npm:^1.13.3":
-  version: 1.16.0
-  resolution: "@modelcontextprotocol/sdk@npm:1.16.0"
+  version: 1.18.0
+  resolution: "@modelcontextprotocol/sdk@npm:1.18.0"
   dependencies:
     ajv: "npm:^6.12.6"
     content-type: "npm:^1.0.5"
@@ -562,7 +562,7 @@ __metadata:
     raw-body: "npm:^3.0.0"
     zod: "npm:^3.23.8"
     zod-to-json-schema: "npm:^3.24.1"
-  checksum: 10c0/fe4dc8038c24e1f2d747926db6ab7fac09458a1b64d8baf9eb7a4de18b351806590a04f5ffe09b25bb874b4d56927618128875fd48125fff37c583d1f0ba66ab
+  checksum: 10c0/73ee91a2f72bdbb9cb9ed1a20f0c35d8ba7439d34b0fb5143814834504b6b244462a5789f30ebe72568c07b4a2cf0ac5a3c15009832f5d0e9a644178f3b8f2ca
   languageName: node
   linkType: hard
 
