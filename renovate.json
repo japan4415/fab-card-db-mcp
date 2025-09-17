@@ -3,6 +3,10 @@
   "extends": [
     "config:recommended"
   ],
+  "allowedPostUpgradeCommands": [
+    "corepack enable",
+    "yarn install --mode=update-lockfile"
+  ],
   "postUpgradeTasks": {
     "executionMode": "branch",
     "commands": [
