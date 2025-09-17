@@ -17,7 +17,7 @@
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.13.3",
-		"agents": "^0.0.109",
+		"agents": "^0.1.0",
 		"axios": "^1.11.0",
 		"cheerio": "^1.1.2",
 		"pino": "^9.7.0",
