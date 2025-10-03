@@ -20,7 +20,7 @@
 		"agents": "^0.1.0",
 		"axios": "^1.11.0",
 		"cheerio": "^1.1.2",
-		"pino": "^9.7.0",
+		"pino": "^10.0.0",
                 "zod": "^3.25.76"
 	},
 	"packageManager": "yarn@4.9.4+sha512.7b1cb0b62abba6a537b3a2ce00811a843bea02bcf53138581a6ae5b1bf563f734872bd47de49ce32a9ca9dcaff995aa789577ffb16811da7c603dcf69e73750b"
