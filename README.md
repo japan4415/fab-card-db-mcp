@@ -2,6 +2,14 @@
 
 A Model Context Protocol (MCP) server for searching and retrieving information about Flesh and Blood Trading Card Game (FAB TCG) cards. This server is deployed on Cloudflare Workers and provides tools for card search and print variation lookup.
 
+## CardVault API Migration Status
+
+The official FAB card database has moved to `cardvault.fabtcg.com` and uses a new API host (`api.cardvault.fabtcg.com`).
+
+- Analysis date: 2026-03-07
+- Investigation + migration design: [`docs/cardvault-api-analysis.md`](docs/cardvault-api-analysis.md)
+- Implementation status: `search_fab_cards` / `get_fab_card_prints` / `get_card_detail` now use CardVault API (`api.cardvault.fabtcg.com`)
+
 ## Features
 
 This MCP server provides the following tools:
