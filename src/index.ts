@@ -88,6 +88,25 @@ interface CardDetail {
     }>;
 }
 
+interface ProductSummary {
+    id: string;
+    productName: string;
+    slug?: string;
+    language?: string;
+    printedDate?: string;
+    productType?: string;
+    releaseDate?: string;
+    description?: string;
+}
+
+interface ProductGroupSummary {
+    id: string;
+    groupName: string;
+    productType?: string;
+    releaseDate?: string;
+    products: ProductSummary[];
+}
+
 // CardVault API 型
 interface CardVaultImage {
     small?: string;
@@ -157,6 +176,25 @@ interface CardVaultCardRecord {
     card_id?: string;
     cores?: CardVaultCore[];
     card_prints?: CardVaultCardPrint[];
+}
+
+interface CardVaultProductGroupProduct {
+    id?: string;
+    product_name?: string | null;
+    slug?: string | null;
+    printed_language?: string | null;
+    printed_date?: string | null;
+    product_type?: string | null;
+    release_date?: string | null;
+    description?: string | null;
+}
+
+interface CardVaultProductGroup {
+    id?: string;
+    group_name?: string | null;
+    product_type?: string | null;
+    release_date?: string | null;
+    products?: CardVaultProductGroupProduct[];
 }
 
 interface CardVaultListResponse<T> {
@@ -265,6 +303,26 @@ function buildVariants(cardId: string, cardPrints: CardVaultCardPrint[]): CardDe
     return Array.from(variants.values());
 }
 
+function parsePageNumberFromUrl(urlText: string | null): number | undefined {
+    const resolvedUrlText = asOptionalString(urlText);
+    if (!resolvedUrlText) {
+        return undefined;
+    }
+
+    try {
+        const url = new URL(resolvedUrlText);
+        const pageParam = asOptionalString(url.searchParams.get("page"));
+        if (!pageParam) {
+            return undefined;
+        }
+
+        const parsedPage = Number.parseInt(pageParam, 10);
+        return Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 async function requestCardVault<T>(
     path: string,
     params?: Record<string, string | number | undefined>,
@@ -310,7 +368,7 @@ export class MyMCP extends McpAgent {
         name: "Flesh and Blood Card Search API",
         version: "1.0.0",
         description:
-            "Search cards, review print variations, and access detailed data from the Flesh and Blood Trading Card Game database",
+            "Search cards, review print variations, browse product catalogs, and access detailed data from the Flesh and Blood Trading Card Game database",
     });
 
     async init() {
@@ -684,6 +742,117 @@ Notes:
             },
         );
 
+        // CardVault の製品グループ一覧を取得
+        this.server.tool(
+            "get_fab_products",
+            `Retrieve product groups from cardvault.fabtcg.com/products.
+
+This tool provides:
+- Product groups and their nested product entries
+- Product metadata (language, slug, printed/release date, type)
+- Pagination metadata for navigating large result sets
+
+Input:
+- page (optional): Page number (default: 1)`,
+            {
+                page: z.number().int().min(1).optional(),
+            },
+            async ({ page }) => {
+                const resolvedPage = page ?? 1;
+
+                try {
+                    logger.info(
+                        {
+                            tool: "get_fab_products",
+                            action: "fetch_start",
+                            page: resolvedPage,
+                        },
+                        "製品一覧取得開始",
+                    );
+
+                    const data = await requestCardVault<CardVaultListResponse<CardVaultProductGroup>>(
+                        "/product-groups-products/",
+                        { page: resolvedPage },
+                    );
+
+                    const productGroups: ProductGroupSummary[] = data.results.map((group) => ({
+                        id: asOptionalString(group.id) ?? "",
+                        groupName: asOptionalString(group.group_name) ?? "",
+                        productType: asOptionalString(group.product_type),
+                        releaseDate: asOptionalString(group.release_date),
+                        products: (group.products ?? []).map((product) => ({
+                            id: asOptionalString(product.id) ?? "",
+                            productName: asOptionalString(product.product_name) ?? "",
+                            slug: asOptionalString(product.slug),
+                            language: asOptionalString(product.printed_language)?.toUpperCase(),
+                            printedDate: asOptionalString(product.printed_date),
+                            productType: asOptionalString(product.product_type),
+                            releaseDate: asOptionalString(product.release_date),
+                            description: asOptionalString(product.description),
+                        })),
+                    }));
+
+                    logger.info(
+                        {
+                            tool: "get_fab_products",
+                            action: "api_response",
+                            page: resolvedPage,
+                            resultCount: data.results.length,
+                            totalCount: data.count,
+                        },
+                        "製品一覧APIレスポンス受信",
+                    );
+
+                    return {
+                        content: [{
+                            type: "text",
+                            text: JSON.stringify(
+                                {
+                                    page: resolvedPage,
+                                    count: data.count,
+                                    next: data.next,
+                                    previous: data.previous,
+                                    nextPage: parsePageNumberFromUrl(data.next),
+                                    previousPage: parsePageNumberFromUrl(data.previous),
+                                    productGroups,
+                                },
+                                null,
+                                2,
+                            ),
+                        }],
+                    };
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+                    const axiosStatus =
+                        axios.isAxiosError(error) && typeof error.response?.status === "number"
+                            ? error.response.status
+                            : undefined;
+                    const isInvalidPageError = axiosStatus === 404;
+
+                    logger.error(
+                        {
+                            tool: "get_fab_products",
+                            action: "error",
+                            error: errorMessage,
+                            page: resolvedPage,
+                            status: axiosStatus ?? null,
+                        },
+                        "製品一覧取得中にエラーが発生",
+                    );
+                    logAxiosError("get_fab_products", error);
+
+                    return {
+                        content: [{
+                            type: "text",
+                            text: isInvalidPageError
+                                ? `エラー: page=${resolvedPage} は無効です。別のページ番号を指定してください。`
+                                : `エラー: 製品一覧の取得中に問題が発生しました - ${errorMessage}`,
+                        }],
+                    };
+                }
+            },
+        );
+
         // ChatGPT向けに追加していた OpenAI 互換ツールは削除しました
     }
 }
@@ -707,7 +876,7 @@ export default {
                 name: "Flesh and Blood Card Search API",
                 version: "1.0.0",
                 description:
-                    "A Model Context Protocol server that provides card search, print variation listings, and detailed information for the Flesh and Blood Trading Card Game database.",
+                    "A Model Context Protocol server that provides card search, print variation listings, product catalogs, and detailed information for the Flesh and Blood Trading Card Game database.",
                 endpoints: {
                     sse: { url: `${origin}/sse` },
                     rpc: { url: `${origin}/mcp` },
