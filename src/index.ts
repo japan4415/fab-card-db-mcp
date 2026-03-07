@@ -2,104 +2,322 @@ import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import axios from "axios";
-import * as cheerio from "cheerio";
 import pino from "pino";
+
+const CARDVAULT_API_BASE = "https://api.cardvault.fabtcg.com/carddb/api/v1";
+const CARDVAULT_WEB_BASE = "https://cardvault.fabtcg.com";
+const API_TIMEOUT_MS = 15000;
 
 // ロガー設定
 const logger = pino({
-	level: 'info',
-	browser: {
-		asObject: true,
-	},
-	timestamp: pino.stdTimeFunctions.isoTime,
+    level: "info",
+    browser: {
+        asObject: true,
+    },
+    timestamp: pino.stdTimeFunctions.isoTime,
 });
 
-// カード情報のインターフェース
+// 公開レスポンス型
 interface Card {
-  id: string;
-  name: string;
-  displayName: string;
-  cardUrl: string;
-  imageUrl: string;
-  pitch?: string;
-  cost?: string;
-  power?: string;
-  defense?: string;
-  text?: string;
-  textHtml?: string;
-  typebox?: string;
+    id: string;
+    name: string;
+    displayName: string;
+    cardUrl: string;
+    imageUrl: string;
+    pitch?: string;
+    cost?: string;
+    power?: string;
+    defense?: string;
+    text?: string;
+    textHtml?: string;
+    typebox?: string;
 }
 
-// カードプリント情報のインターフェース
 interface CardPrint {
-  printId: string;
-  cardId: string;
-  name: string;
-  displayName: string;
-  pitch?: string;
-  imageUrl: string;
-  imageUrlSmall: string;
-  imageUrlLarge: string;
-  layout: {
-    key: string;
-    label: string;
-  };
-  finishTypes: Array<{
-    key: string;
-    label: string;
-  }>;
+    printId: string;
+    cardId: string;
+    name: string;
+    displayName: string;
+    pitch?: string;
+    imageUrl: string;
+    imageUrlSmall: string;
+    imageUrlLarge: string;
+    layout: {
+        key: string;
+        label: string;
+    };
+    finishTypes: Array<{
+        key: string;
+        label: string;
+    }>;
 }
 
-// カード詳細情報のインターフェース
 interface CardDetail {
-  cardId: string;
-  printId: string;
-  imageUrl: string;
-  
-  // 英語情報
-  enName: string;
-  enText?: string;
-  enTypebox?: string;
-  
-  // 日本語情報
-  jaName?: string;
-  jaText?: string;
-  jaTypebox?: string;
-  
-  // カード属性
-  pitch?: string;
-  cost?: string;
-  power?: string;
-  defense?: string;
-  
-  // 出版情報
-  set?: string;
-  rarity?: string;
-  artist?: string;
-  
-  // バリエーション情報
-  variants?: Array<{
+    cardId: string;
     printId: string;
-    language: string;
-    setName: string;
-    finishType: string;
-    url: string;
-  }>;
+    imageUrl: string;
+
+    // 英語情報
+    enName: string;
+    enText?: string;
+    enTypebox?: string;
+
+    // 日本語情報
+    jaName?: string;
+    jaText?: string;
+    jaTypebox?: string;
+
+    // カード属性
+    pitch?: string;
+    cost?: string;
+    power?: string;
+    defense?: string;
+
+    // 出版情報
+    set?: string;
+    rarity?: string;
+    artist?: string;
+
+    // バリエーション情報
+    variants?: Array<{
+        printId: string;
+        language: string;
+        setName: string;
+        finishType: string;
+        url: string;
+    }>;
+}
+
+// CardVault API 型
+interface CardVaultImage {
+    small?: string;
+    normal?: string;
+    large?: string;
+}
+
+interface CardVaultFace {
+    face_id?: string;
+    face_language?: string;
+    finish_type?: string;
+    printed_name?: string;
+    printed_pitch?: number | string | null;
+    printed_cost?: string | null;
+    printed_power?: string | null;
+    printed_defense?: string | null;
+    printed_rules_text?: string | null;
+    printed_typebox?: string | null;
+    printed_artist?: string | null;
+    image?: CardVaultImage;
+    layout_position?: number;
+}
+
+interface CardVaultAdvancedSearchResult {
+    card_id: string;
+    print_id: string;
+    printed_name?: string;
+    printed_pitch?: number | string | null;
+    printed_cost?: string | null;
+    printed_power?: string | null;
+    printed_defense?: string | null;
+    printed_rules_text?: string | null;
+    printed_typebox?: string | null;
+    faces?: Array<{
+        image?: CardVaultImage;
+        layout_position?: number;
+    }>;
+}
+
+interface CardVaultProduct {
+    product_name?: string | null;
+}
+
+interface CardVaultPrintSet {
+    set_name?: string | null;
+}
+
+interface CardVaultCardPrint {
+    print_id?: string;
+    print_language?: string | null;
+    rarity?: string | null;
+    layout?: string | null;
+    is_default?: boolean;
+    faces?: CardVaultFace[];
+    product?: CardVaultProduct;
+    print_set?: CardVaultPrintSet;
+}
+
+interface CardVaultCore {
+    pitch?: string | null;
+    cost?: string | null;
+    power?: string | null;
+    defense?: string | null;
+}
+
+interface CardVaultCardRecord {
+    card_id?: string;
+    cores?: CardVaultCore[];
+    card_prints?: CardVaultCardPrint[];
+}
+
+interface CardVaultListResponse<T> {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: T[];
+}
+
+function asOptionalString(value: unknown): string | undefined {
+    if (value === null || value === undefined) {
+        return undefined;
+    }
+
+    const stringValue = String(value).trim();
+    return stringValue.length > 0 ? stringValue : undefined;
+}
+
+function asStringOrEmpty(value: unknown): string {
+    return asOptionalString(value) ?? "";
+}
+
+function formatLabel(value: string): string {
+    return value
+        .split(/[-_\s]+/)
+        .filter((word) => word.length > 0)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+}
+
+function normalizeLanguageCode(code: string | null | undefined): string {
+    return (asOptionalString(code) ?? "en").toUpperCase();
+}
+
+function pickPrimaryFace(
+    faces: CardVaultFace[] | undefined,
+    preferredFaceId?: string,
+): CardVaultFace | undefined {
+    const resolvedFaces = faces ?? [];
+
+    if (preferredFaceId) {
+        const matchedFace = resolvedFaces.find((face) => asOptionalString(face.face_id) === preferredFaceId);
+        if (matchedFace) {
+            return matchedFace;
+        }
+    }
+
+    if (resolvedFaces.length === 0) {
+        return undefined;
+    }
+
+    const sortedFaces = [...resolvedFaces].sort((left, right) => {
+        const leftPosition = typeof left.layout_position === "number" ? left.layout_position : Number.MAX_SAFE_INTEGER;
+        const rightPosition =
+            typeof right.layout_position === "number" ? right.layout_position : Number.MAX_SAFE_INTEGER;
+        return leftPosition - rightPosition;
+    });
+
+    return sortedFaces[0];
+}
+
+function findFaceByLanguage(cardPrints: CardVaultCardPrint[], languageCode: string): CardVaultFace | undefined {
+    const normalizedLanguageCode = languageCode.toLowerCase();
+
+    for (const cardPrint of cardPrints) {
+        for (const face of cardPrint.faces ?? []) {
+            const faceLanguage = asOptionalString(face.face_language)?.toLowerCase();
+            if (faceLanguage === normalizedLanguageCode) {
+                return face;
+            }
+        }
+    }
+
+    return undefined;
+}
+
+function buildVariants(cardId: string, cardPrints: CardVaultCardPrint[]): CardDetail["variants"] {
+    type CardVariant = NonNullable<CardDetail["variants"]>[number];
+    const variants = new Map<string, CardVariant>();
+
+    for (const cardPrint of cardPrints) {
+        const faces = cardPrint.faces ?? [];
+        for (const face of faces) {
+            const variantPrintId = asOptionalString(face.face_id) ?? asOptionalString(cardPrint.print_id);
+            if (!variantPrintId || variants.has(variantPrintId)) {
+                continue;
+            }
+
+            const language = normalizeLanguageCode(face.face_language ?? cardPrint.print_language);
+            const setName =
+                asOptionalString(cardPrint.product?.product_name) ??
+                asOptionalString(cardPrint.print_set?.set_name) ??
+                "";
+            const finishType = asOptionalString(face.finish_type) ?? "regular";
+
+            variants.set(variantPrintId, {
+                printId: variantPrintId,
+                language,
+                setName,
+                finishType,
+                url: `${CARDVAULT_WEB_BASE}/card/${encodeURIComponent(cardId)}/${encodeURIComponent(variantPrintId)}`,
+            });
+        }
+    }
+
+    return Array.from(variants.values());
+}
+
+async function requestCardVault<T>(
+    path: string,
+    params?: Record<string, string | number | undefined>,
+): Promise<T> {
+    const response = await axios.get<T>(`${CARDVAULT_API_BASE}${path}`, {
+        params,
+        timeout: API_TIMEOUT_MS,
+        headers: {
+            Accept: "application/json",
+        },
+    });
+
+    return response.data;
+}
+
+async function fetchCardById(cardId: string): Promise<CardVaultCardRecord | null> {
+    const data = await requestCardVault<CardVaultListResponse<CardVaultCardRecord>>(
+        `/card_id/${encodeURIComponent(cardId)}/`,
+    );
+
+    return data.results[0] ?? null;
+}
+
+function logAxiosError(tool: string, error: unknown): void {
+    if (!axios.isAxiosError(error)) {
+        return;
+    }
+
+    logger.error(
+        {
+            tool,
+            action: "api_error_detail",
+            status: error.response?.status,
+            responseData: error.response?.data,
+        },
+        "API エラー詳細",
+    );
 }
 
 // Define our MCP agent with tools
 export class MyMCP extends McpAgent {
-        server = new McpServer({
-                name: "Flesh and Blood Card Search API",
-                version: "1.0.0",
-                description: "Search cards, review print variations, and access detailed data from the Flesh and Blood Trading Card Game database"
-        });
+    server = new McpServer({
+        name: "Flesh and Blood Card Search API",
+        version: "1.0.0",
+        description:
+            "Search cards, review print variations, and access detailed data from the Flesh and Blood Trading Card Game database",
+    });
 
-        async init() {
-                // Search Flesh and Blood TCG cards using the API
-                this.server.tool(
-                        "search_fab_cards",
-                        `Search for cards in the Flesh and Blood TCG.
+    async init() {
+        // Search Flesh and Blood TCG cards using the API
+        this.server.tool(
+            "search_fab_cards",
+            `Search for cards in the Flesh and Blood TCG.
 
 This tool:
 - Returns a list of cards matching the search query
@@ -107,92 +325,87 @@ This tool:
 - Uses partial string matching for flexible searches
 
 For best results, use short and specific search terms.`,
-                        { query: z.string() },
-                        async ({ query }) => {
-                                try {
-                                        logger.info({
-                                                tool: 'search_fab_cards',
-                                                action: 'search_start',
-                                                query: query
-                                        }, 'カード検索開始');
+            { query: z.string() },
+            async ({ query }) => {
+                try {
+                    logger.info(
+                        {
+                            tool: "search_fab_cards",
+                            action: "search_start",
+                            query,
+                        },
+                        "カード検索開始",
+                    );
 
-                                        const url = `https://cards.fabtcg.com/api/search/v1/cards/?q=${encodeURIComponent(query)}`;
-                                        logger.info({
-                                                tool: 'search_fab_cards',
-                                                action: 'api_request',
-                                                url: url
-                                        }, 'API リクエスト送信');
+                    const data = await requestCardVault<CardVaultListResponse<CardVaultAdvancedSearchResult>>(
+                        "/advanced-search/",
+                        {
+                            q: query,
+                            page_size: 60,
+                            orderby: "name",
+                        },
+                    );
 
-                                        const response = await axios.get(url);
-                                        logger.info({
-                                                tool: 'search_fab_cards',
-                                                action: 'api_response',
-                                                status: response.status,
-                                                resultCount: response.data.results?.length || 0
-                                        }, 'API レスポンス受信');
+                    logger.info(
+                        {
+                            tool: "search_fab_cards",
+                            action: "api_response",
+                            resultCount: data.results.length,
+                        },
+                        "API レスポンス受信",
+                    );
 
-                                        // APIからのレスポンスをパース
-                                        const data = response.data;
-                                        const cards: Card[] = data.results.map((card: any) => ({
-                                                id: card.card_id,
-                                                name: card.name,
-                                                displayName: card.display_name,
-                                                cardUrl: `https://cards.fabtcg.com${card.url}`,
-                                                imageUrl: card.image.normal,
-                                                pitch: card.pitch,
-                                                cost: card.cost,
-                                                power: card.power,
-                                                defense: card.defense,
-                                                text: card.text,
-                                                textHtml: card.text_html,
-                                                typebox: card.typebox
-                                        }));
+                    const cards: Card[] = data.results.map((card) => {
+                        const primaryFace = card.faces?.[0];
+                        return {
+                            id: card.card_id,
+                            name: asOptionalString(card.printed_name) ?? card.card_id,
+                            displayName: asOptionalString(card.printed_name) ?? card.card_id,
+                            cardUrl: `${CARDVAULT_WEB_BASE}/card/${encodeURIComponent(card.card_id)}/${encodeURIComponent(card.print_id)}`,
+                            imageUrl: asStringOrEmpty(primaryFace?.image?.normal),
+                            pitch: asOptionalString(card.printed_pitch),
+                            cost: asOptionalString(card.printed_cost),
+                            power: asOptionalString(card.printed_power),
+                            defense: asOptionalString(card.printed_defense),
+                            text: asOptionalString(card.printed_rules_text),
+                            typebox: asOptionalString(card.printed_typebox),
+                        };
+                    });
 
-                                        return {
-                                                content: [{
-                                                        type: "text",
-                                                        text: JSON.stringify(cards, null, 2)
-                                                }],
-                                        };
-                                } catch (error) {
-                                        const errorMessage = error instanceof Error
-                                                ? error.message
-                                                : 'Unknown error occurred';
+                    return {
+                        content: [{
+                            type: "text",
+                            text: JSON.stringify(cards, null, 2),
+                        }],
+                    };
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 
-                                        logger.error({
-                                                tool: 'search_fab_cards',
-                                                action: 'error',
-                                                error: errorMessage,
-                                                query: query
-                                        }, 'カード検索中にエラーが発生');
+                    logger.error(
+                        {
+                            tool: "search_fab_cards",
+                            action: "error",
+                            error: errorMessage,
+                            query,
+                        },
+                        "カード検索中にエラーが発生",
+                    );
+                    logAxiosError("search_fab_cards", error);
 
-                                        if (error instanceof Error && 'response' in error) {
-                                                // @ts-ignore
-                                                const responseData = error.response?.data;
-                                                // @ts-ignore
-                                                const responseStatus = error.response?.status;
-                                                logger.error({
-                                                        tool: 'search_fab_cards',
-                                                        action: 'api_error_detail',
-                                                        status: responseStatus,
-                                                        responseData: responseData
-                                                }, 'API エラー詳細');
-                                        }
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `エラー: カードの検索中に問題が発生しました - ${errorMessage}`,
+                        }],
+                    };
+                }
+            },
+        );
 
-                                        return {
-                                                content: [{
-                                                        type: "text",
-                                                        text: `エラー: カードの検索中に問題が発生しました - ${errorMessage}`
-                                                }],
-                                        };
-                                }
-                        }
-                );
-
-                // Get all print variations of a specific card
-                this.server.tool(
-                        "get_fab_card_prints",
-                        `Retrieve all print variations of a specific card.
+        // Get all print variations of a specific card
+        this.server.tool(
+            "get_fab_card_prints",
+            `Retrieve all print variations of a specific card.
 
 This tool provides:
 - Information about different printings of the same card
@@ -201,90 +414,107 @@ This tool provides:
 
 Required input:
 - cardId: Obtain this from the search_fab_cards tool first`,
-                        { cardId: z.string() },
-                        async ({ cardId }) => {
-                                try {
-                                        logger.info({
-                                                tool: 'get_fab_card_prints',
-                                                action: 'search_start',
-                                                cardId: cardId
-                                        }, 'カードプリント検索開始');
+            { cardId: z.string() },
+            async ({ cardId }) => {
+                try {
+                    logger.info(
+                        {
+                            tool: "get_fab_card_prints",
+                            action: "search_start",
+                            cardId,
+                        },
+                        "カードプリント検索開始",
+                    );
 
-                                        const url = `https://cards.fabtcg.com/api/fab/v1/prints/?card_id=${encodeURIComponent(cardId)}`;
-                                        logger.info({
-                                                tool: 'get_fab_card_prints',
-                                                action: 'api_request',
-                                                url: url
-                                        }, 'API リクエスト送信');
+                    const card = await fetchCardById(cardId);
+                    const cardPrints = card?.card_prints ?? [];
 
-                                        const response = await axios.get(url);
-                                        logger.info({
-                                                tool: 'get_fab_card_prints',
-                                                action: 'api_response',
-                                                status: response.status,
-                                                resultCount: response.data.results?.length || 0
-                                        }, 'API レスポンス受信');
-
-                                        // APIからのレスポンスをパース
-                                        const data = response.data;
-                                        const prints: CardPrint[] = data.results.map((print: any) => ({
-                                                printId: print.print_id,
-                                                cardId: print.card_id,
-                                                name: print.name,
-                                                displayName: print.display_name,
-                                                pitch: print.pitch,
-                                                imageUrl: print.image.normal,
-                                                imageUrlSmall: print.image.small,
-                                                imageUrlLarge: print.image.large,
-                                                layout: print.layout,
-                                                finishTypes: print.finish_types
-                                        }));
-
-                                        return {
-                                                content: [{
-                                                        type: "text",
-                                                        text: JSON.stringify(prints, null, 2)
-                                                }],
-                                        };
-                                } catch (error) {
-                                        const errorMessage = error instanceof Error
-                                                ? error.message
-                                                : 'Unknown error occurred';
-
-                                        logger.error({
-                                                tool: 'get_fab_card_prints',
-                                                action: 'error',
-                                                error: errorMessage,
-                                                cardId: cardId
-                                        }, 'カードプリント取得中にエラーが発生');
-
-                                        if (error instanceof Error && 'response' in error) {
-                                                // @ts-ignore
-                                                const responseData = error.response?.data;
-                                                // @ts-ignore
-                                                const responseStatus = error.response?.status;
-                                                logger.error({
-                                                        tool: 'get_fab_card_prints',
-                                                        action: 'api_error_detail',
-                                                        status: responseStatus,
-                                                        responseData: responseData
-                                                }, 'API エラー詳細');
-                                        }
-
-                                        return {
-                                                content: [{
-                                                        type: "text",
-                                                        text: `エラー: カードプリント情報の取得中に問題が発生しました - ${errorMessage}`
-                                                }],
-                                        };
-                                }
+                    const prints = cardPrints.reduce<CardPrint[]>((accumulator, cardPrint) => {
+                        const primaryFace = pickPrimaryFace(cardPrint.faces);
+                        const printId = asOptionalString(cardPrint.print_id);
+                        if (!printId) {
+                            return accumulator;
                         }
-                );
 
-                // カード詳細情報を取得
-                this.server.tool(
-                        "get_card_detail",
-                        `Get detailed information about a specific card including non-English text.
+                        const finishTypeKeys = Array.from(
+                            new Set(
+                                (cardPrint.faces ?? [])
+                                    .map((face) => asOptionalString(face.finish_type))
+                                    .filter((finishType): finishType is string => Boolean(finishType)),
+                            ),
+                        );
+
+                        accumulator.push({
+                            printId,
+                            cardId,
+                            name:
+                                asOptionalString(primaryFace?.printed_name) ??
+                                asOptionalString(cardPrint.print_id) ??
+                                cardId,
+                            displayName:
+                                asOptionalString(primaryFace?.printed_name) ??
+                                asOptionalString(cardPrint.print_id) ??
+                                cardId,
+                            pitch: asOptionalString(primaryFace?.printed_pitch),
+                            imageUrl: asStringOrEmpty(primaryFace?.image?.normal),
+                            imageUrlSmall: asStringOrEmpty(primaryFace?.image?.small),
+                            imageUrlLarge: asStringOrEmpty(primaryFace?.image?.large),
+                            layout: {
+                                key: asOptionalString(cardPrint.layout) ?? "unknown",
+                                label: formatLabel(asOptionalString(cardPrint.layout) ?? "unknown"),
+                            },
+                            finishTypes: finishTypeKeys.map((finishType) => ({
+                                key: finishType,
+                                label: formatLabel(finishType),
+                            })),
+                        });
+
+                        return accumulator;
+                    }, []);
+
+                    logger.info(
+                        {
+                            tool: "get_fab_card_prints",
+                            action: "api_response",
+                            resultCount: prints.length,
+                        },
+                        "API レスポンス受信",
+                    );
+
+                    return {
+                        content: [{
+                            type: "text",
+                            text: JSON.stringify(prints, null, 2),
+                        }],
+                    };
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+
+                    logger.error(
+                        {
+                            tool: "get_fab_card_prints",
+                            action: "error",
+                            error: errorMessage,
+                            cardId,
+                        },
+                        "カードプリント取得中にエラーが発生",
+                    );
+                    logAxiosError("get_fab_card_prints", error);
+
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `エラー: カードプリント情報の取得中に問題が発生しました - ${errorMessage}`,
+                        }],
+                    };
+                }
+            },
+        );
+
+        // カード詳細情報を取得
+        this.server.tool(
+            "get_card_detail",
+            `Get detailed information about a specific card including non-English text.
 
 Inputs:
 - cardId (required): The Flesh and Blood card identifier (for example, WTR001).
@@ -302,261 +532,207 @@ Recommended flow:
 3. Provide both identifiers here when you need a specific print variant (especially for non-English cards).
 
 Notes:
-- When printId is omitted, the site returns the default print currently highlighted on cards.fabtcg.com.
-- If the requested card or print combination does not exist, the request will fail with an error from cards.fabtcg.com.`,
-			{ 
-				cardId: z.string(), 
-				printId: z.string().optional() 
-			},
-			async ({ cardId, printId }: { cardId: string; printId?: string }) => {
-				try {
-					logger.info({
-						tool: 'get_card_detail',
-						action: 'detail_start',
-						cardId: cardId,
-						printId: printId || null
-					}, 'カード詳細取得開始');
-					
-					let url: string;
-					
-					if (printId) {
-						// プリントIDが指定されている場合はそれを使用
-						url = `https://cards.fabtcg.com/card/${encodeURIComponent(cardId)}/${encodeURIComponent(printId)}/`;
-					} else {
-						// プリントIDが指定されていない場合はカードIDのみでアクセス
-						url = `https://cards.fabtcg.com/card/${encodeURIComponent(cardId)}/`;
-					}
-					
-					logger.info({
-						tool: 'get_card_detail',
-						action: 'page_request',
-						url: url
-					}, 'ページリクエスト送信');
-					
-					const response = await axios.get(url);
-					logger.info({
-						tool: 'get_card_detail',
-						action: 'page_response',
-						status: response.status,
-						contentLength: response.data.length
-					}, 'ページレスポンス受信');
-					
-					const $ = cheerio.load(response.data);
-					logger.info({
-						tool: 'get_card_detail',
-						action: 'html_parse_start'
-					}, 'HTML解析開始');
-					
-					// 基本情報の抽出
-					const imageUrl = $('.card-details__face img').attr('src') || '';
-					logger.debug({
-						tool: 'get_card_detail',
-						action: 'extract_image',
-						imageUrl: imageUrl
-					}, '画像URL抽出');
-					
-					const currentPrintId = $('.card-details__variant [data-component-variant-is-current]')
-						.parent().find('[data-component-variant-print-id]').text();
-					logger.debug({
-						tool: 'get_card_detail',
-						action: 'extract_print_id',
-						currentPrintId: currentPrintId || null
-					}, '現在のプリントID抽出');
-					
-					// 英語情報の抽出（rules タブ）
-					const rulesTab = $('[data-component-tab="rules"]');
-					const enName = rulesTab.find('.card-details-data__title-text').text().trim();
-					const enText = rulesTab.find('.card-details-data__blurb div').text().trim();
-					const enTypebox = rulesTab.find('.card-details-data__footer-text').text().trim();
-					logger.debug({
-						tool: 'get_card_detail',
-						action: 'extract_english_info',
-						enName: enName,
-						enTextLength: enText.length
-					}, '英語情報抽出');
-					
-					// 日本語情報の抽出（print タブ）
-					const printTab = $('[data-component-tab="print"]');
-					const jaName = printTab.find('.card-details-data__title-text').text().trim();
-					const jaText = printTab.find('.card-details-data__blurb div').text().trim();
-					const jaTypebox = printTab.find('.card-details-data__footer-text').text().trim();
-					logger.debug({
-						tool: 'get_card_detail',
-						action: 'extract_japanese_info',
-						jaName: jaName,
-						jaTextLength: jaText.length
-					}, '日本語情報抽出');
-					
-					// カード属性の抽出
-					const pitch = $('.card-details-data__corner:contains("ピッチ:")').text().replace(/[^0-9]/g, '') || 
-								rulesTab.find('.card-details-data__corner:first-child span:last-child').text().trim();
-					const cost = rulesTab.find('.card-details-data__corner:contains("Cost") span').text().trim();
-					const power = rulesTab.find('.card-details-data__corner:contains("パワー") span').text().trim() || 
-								rulesTab.find('.card-details-data__footer .card-details-data__corner:first-child span:last-child').text().trim();
-					const defense = rulesTab.find('.card-details-data__corner:contains("防御") span').text().trim() || 
-								rulesTab.find('.card-details-data__footer .card-details-data__corner:last-child span:first-child').text().trim();
-					
-					// 出版情報の抽出
-					const productionInfo = $('.card-details__production-details-wrapper p:first-child').text();
-					const [set, rarity] = productionInfo.split('•').map((item: string) => item.trim());
-					const artist = $('.card-details__production-details-wrapper p:last-child a').text().trim();
-					
-					// バリエーション情報の抽出
-					const variants: Array<{printId: string; language: string; setName: string; finishType: string; url: string}> = [];
-					const variantCount = $('[data-component-variant]').length;
-					logger.debug({
-						tool: 'get_card_detail',
-						action: 'variant_count_check',
-						variantCount: variantCount
-					}, 'バリエーション数確認');
-					
-					$('[data-component-variant]').each((_: number, element: any) => {
-						const $el = $(element);
-						const variantPrintId = $el.find('[data-component-variant-print-id]').text();
-						const variantSetName = $el.find('[data-component-variant-name]').text();
-						const variantFinishType = $el.find('[data-component-variant-finish-type-display]').text();
-						const variantUrl = $el.find('[data-component-variant-link]').text();
-						const languageMatch = variantPrintId.match(/^([A-Z]{2})_/);
-						const language = languageMatch ? languageMatch[1] : 'EN';
-						
-						if (variantPrintId && variantUrl) {
-							variants.push({
-								printId: variantPrintId,
-								language,
-								setName: variantSetName,
-								finishType: variantFinishType,
-								url: `https://cards.fabtcg.com${variantUrl}`
-							});
-						}
-					});
-					
-					logger.debug({
-						tool: 'get_card_detail',
-						action: 'variants_extracted',
-						variantCount: variants.length
-					}, 'バリエーション抽出完了');
-					
-					// カード詳細情報の作成
-					const cardDetail: CardDetail = {
-						cardId,
-						printId: currentPrintId || printId || '',
-						imageUrl,
-						enName,
-						enText,
-						enTypebox,
-						jaName,
-						jaText,
-						jaTypebox,
-						pitch,
-						cost,
-						power,
-						defense,
-						set,
-						rarity,
-						artist,
-						variants
-					};
-					
-					return {
-						content: [{ 
-							type: "text", 
-							text: JSON.stringify(cardDetail, null, 2)
-						}],
-					};
-				} catch (error) {
-					const errorMessage = error instanceof Error 
-						? error.message 
-						: 'Unknown error occurred';
-					
-					logger.error({
-						tool: 'get_card_detail',
-						action: 'error',
-						error: errorMessage,
-						cardId: cardId,
-						printId: printId || null
-					}, 'カード詳細取得中にエラーが発生');
-					
-					if (error instanceof Error && 'response' in error) {
-						// @ts-ignore
-						const responseData = error.response?.data;
-						// @ts-ignore
-						const responseStatus = error.response?.status;
-						logger.error({
-							tool: 'get_card_detail',
-							action: 'api_error_detail',
-							status: responseStatus,
-							responseData: responseData
-						}, 'API エラー詳細');
-					} else if (error instanceof Error) {
-						logger.error({
-							tool: 'get_card_detail',
-							action: 'error_stack',
-							stack: error.stack
-						}, 'エラースタック情報');
-					}
-					
-					return {
-						content: [{ 
-							type: "text", 
-							text: `エラー: カード詳細情報の取得中に問題が発生しました - ${errorMessage}` 
-						}],
-					};
-				}
-			}
-		);
+- When printId is omitted, the tool uses the default print from cardvault.fabtcg.com.
+- If the requested card or print combination does not exist, the tool returns an error message.`,
+            {
+                cardId: z.string(),
+                printId: z.string().optional(),
+            },
+            async ({ cardId, printId }: { cardId: string; printId?: string }) => {
+                try {
+                    logger.info(
+                        {
+                            tool: "get_card_detail",
+                            action: "detail_start",
+                            cardId,
+                            printId: printId ?? null,
+                        },
+                        "カード詳細取得開始",
+                    );
 
-                // ChatGPT向けに追加していた OpenAI 互換ツールは削除しました
-	}
+                    const card = await fetchCardById(cardId);
+                    if (!card) {
+                        return {
+                            content: [{
+                                type: "text",
+                                text: `エラー: cardId='${cardId}' に一致するカードが見つかりませんでした`,
+                            }],
+                        };
+                    }
+
+                    const resolvedCardId = asOptionalString(card.card_id) ?? cardId;
+                    const cardPrints = card.card_prints ?? [];
+                    if (cardPrints.length === 0) {
+                        return {
+                            content: [{
+                                type: "text",
+                                text: `エラー: cardId='${resolvedCardId}' に利用可能なカードプリントがありません`,
+                            }],
+                        };
+                    }
+
+                    let selectedPrint: CardVaultCardPrint | undefined;
+                    let preferredFaceId: string | undefined;
+
+                    if (printId) {
+                        selectedPrint = cardPrints.find((cardPrint) => asOptionalString(cardPrint.print_id) === printId);
+                        if (!selectedPrint) {
+                            selectedPrint = cardPrints.find((cardPrint) =>
+                                (cardPrint.faces ?? []).some((face) => asOptionalString(face.face_id) === printId),
+                            );
+                            preferredFaceId = printId;
+                        }
+
+                        if (!selectedPrint) {
+                            return {
+                                content: [{
+                                    type: "text",
+                                    text: `エラー: cardId='${resolvedCardId}' に printId='${printId}' は存在しません`,
+                                }],
+                            };
+                        }
+                    } else {
+                        selectedPrint = cardPrints.find((cardPrint) => cardPrint.is_default) ?? cardPrints[0];
+                    }
+
+                    const selectedFace = pickPrimaryFace(selectedPrint.faces, preferredFaceId ?? printId);
+                    const englishFace = findFaceByLanguage(cardPrints, "en");
+                    const japaneseFace = findFaceByLanguage(cardPrints, "ja");
+
+                    const resolvedPrintId =
+                        asOptionalString(selectedFace?.face_id) ??
+                        asOptionalString(selectedPrint.print_id) ??
+                        printId ??
+                        "";
+
+                    const cardDetail: CardDetail = {
+                        cardId: resolvedCardId,
+                        printId: resolvedPrintId,
+                        imageUrl: asStringOrEmpty(selectedFace?.image?.normal),
+                        enName:
+                            asOptionalString(englishFace?.printed_name) ??
+                            asOptionalString(selectedFace?.printed_name) ??
+                            resolvedCardId,
+                        enText:
+                            asOptionalString(englishFace?.printed_rules_text) ??
+                            asOptionalString(selectedFace?.printed_rules_text),
+                        enTypebox:
+                            asOptionalString(englishFace?.printed_typebox) ??
+                            asOptionalString(selectedFace?.printed_typebox),
+                        jaName: asOptionalString(japaneseFace?.printed_name),
+                        jaText: asOptionalString(japaneseFace?.printed_rules_text),
+                        jaTypebox: asOptionalString(japaneseFace?.printed_typebox),
+                        pitch:
+                            asOptionalString(selectedFace?.printed_pitch) ??
+                            asOptionalString(card.cores?.[0]?.pitch),
+                        cost:
+                            asOptionalString(selectedFace?.printed_cost) ??
+                            asOptionalString(card.cores?.[0]?.cost),
+                        power:
+                            asOptionalString(selectedFace?.printed_power) ??
+                            asOptionalString(card.cores?.[0]?.power),
+                        defense:
+                            asOptionalString(selectedFace?.printed_defense) ??
+                            asOptionalString(card.cores?.[0]?.defense),
+                        set:
+                            asOptionalString(selectedPrint.print_set?.set_name) ??
+                            asOptionalString(selectedPrint.product?.product_name),
+                        rarity: asOptionalString(selectedPrint.rarity),
+                        artist: asOptionalString(selectedFace?.printed_artist),
+                        variants: buildVariants(resolvedCardId, cardPrints),
+                    };
+
+                    return {
+                        content: [{
+                            type: "text",
+                            text: JSON.stringify(cardDetail, null, 2),
+                        }],
+                    };
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+
+                    logger.error(
+                        {
+                            tool: "get_card_detail",
+                            action: "error",
+                            error: errorMessage,
+                            cardId,
+                            printId: printId ?? null,
+                        },
+                        "カード詳細取得中にエラーが発生",
+                    );
+                    logAxiosError("get_card_detail", error);
+
+                    if (error instanceof Error) {
+                        logger.error(
+                            {
+                                tool: "get_card_detail",
+                                action: "error_stack",
+                                stack: error.stack,
+                            },
+                            "エラースタック情報",
+                        );
+                    }
+
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `エラー: カード詳細情報の取得中に問題が発生しました - ${errorMessage}`,
+                        }],
+                    };
+                }
+            },
+        );
+
+        // ChatGPT向けに追加していた OpenAI 互換ツールは削除しました
+    }
 }
 
 export default {
-        fetch(request: Request, env: Env, ctx: ExecutionContext) {
-                const url = new URL(request.url);
+    fetch(request: Request, env: Env, ctx: ExecutionContext) {
+        const url = new URL(request.url);
 
-                if (url.pathname === "/.well-known/mcp.json") {
-                        if (request.method !== "GET" && request.method !== "HEAD") {
-                                return new Response(null, {
-                                        status: 405,
-                                        headers: {
-                                                Allow: "GET, HEAD",
-                                        },
-                                });
-                        }
+        if (url.pathname === "/.well-known/mcp.json") {
+            if (request.method !== "GET" && request.method !== "HEAD") {
+                return new Response(null, {
+                    status: 405,
+                    headers: {
+                        Allow: "GET, HEAD",
+                    },
+                });
+            }
 
-                        const origin = url.origin;
-                        const manifest = {
-                                name: "Flesh and Blood Card Search API",
-                                version: "1.0.0",
-                                description:
-                                        "A Model Context Protocol server that provides card search, print variation listings, and detailed information for the Flesh and Blood Trading Card Game database.",
-                                endpoints: {
-                                        sse: { url: `${origin}/sse` },
-                                        rpc: { url: `${origin}/mcp` },
-                                },
-                        };
+            const origin = url.origin;
+            const manifest = {
+                name: "Flesh and Blood Card Search API",
+                version: "1.0.0",
+                description:
+                    "A Model Context Protocol server that provides card search, print variation listings, and detailed information for the Flesh and Blood Trading Card Game database.",
+                endpoints: {
+                    sse: { url: `${origin}/sse` },
+                    rpc: { url: `${origin}/mcp` },
+                },
+            };
 
-                        return new Response(
-                                request.method === "HEAD" ? null : JSON.stringify(manifest, null, 2),
-                                {
-                                        status: 200,
-                                        headers: {
-                                                "content-type": "application/json; charset=utf-8",
-                                                "cache-control": "public, max-age=300",
-                                        },
-                                },
-                        );
-                }
+            return new Response(request.method === "HEAD" ? null : JSON.stringify(manifest, null, 2), {
+                status: 200,
+                headers: {
+                    "content-type": "application/json; charset=utf-8",
+                    "cache-control": "public, max-age=300",
+                },
+            });
+        }
 
-                if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-                        // @ts-ignore
-                        return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
-                }
+        if (url.pathname === "/sse" || url.pathname === "/sse/message") {
+            // @ts-ignore
+            return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
+        }
 
-		if (url.pathname === "/mcp") {
-			// @ts-ignore
-			return MyMCP.serve("/mcp").fetch(request, env, ctx);
-		}
+        if (url.pathname === "/mcp") {
+            // @ts-ignore
+            return MyMCP.serve("/mcp").fetch(request, env, ctx);
+        }
 
-		return new Response("Not found", { status: 404 });
-	},
+        return new Response("Not found", { status: 404 });
+    },
 };
