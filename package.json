@@ -5,12 +5,13 @@
 	"scripts": {
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
-		"format": "biome format --write",
-		"lint:fix": "biome lint --fix",
+		"format": "biome format --write .",
+		"lint:fix": "biome lint --apply .",
 		"start": "wrangler dev",
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "1.6.2",
 		"@types/node": "^24.1.0",
 		"typescript": "^5.8.3",
 		"wrangler": "^4.26.0"
