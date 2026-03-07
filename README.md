@@ -8,7 +8,7 @@ The official FAB card database has moved to `cardvault.fabtcg.com` and uses a ne
 
 - Analysis date: 2026-03-07
 - Investigation + migration design: [`docs/cardvault-api-analysis.md`](docs/cardvault-api-analysis.md)
-- Implementation status: `search_fab_cards` / `get_fab_card_prints` / `get_card_detail` now use CardVault API (`api.cardvault.fabtcg.com`)
+- Implementation status: `search_fab_cards` / `get_fab_card_prints` / `get_card_detail` / `get_fab_products` now use CardVault API (`api.cardvault.fabtcg.com`)
 
 ## Features
 
@@ -31,6 +31,14 @@ Retrieve all print variations of a specific card using its card ID. Returns info
 - Print images (small, normal, large sizes)
 - Layout information
 - Finish types available
+
+### 3. Product Catalog Lookup (`get_fab_products`)
+
+Retrieve product groups shown on `cardvault.fabtcg.com/products`, including:
+- Product group name and type
+- Release dates
+- Nested product entries (slug, language, printed date)
+- Pagination metadata (`next`, `previous`, `nextPage`, `previousPage`)
 
 ## Deployment
 

@@ -11,6 +11,7 @@
 | --- | --- | --- |
 | カード検索 | `GET https://api.cardvault.fabtcg.com/carddb/api/v1/advanced-search/?q=<query>&page_size=60&orderby=name` | 一覧画面で使用。`advanced-search`（末尾 `/` なし）へアクセスすると `301`。 |
 | カード詳細（カード単位） | `GET https://api.cardvault.fabtcg.com/carddb/api/v1/card_id/<card_id>/` | 詳細画面で使用。`card_prints` に印刷違い・言語違いがまとまって返る。 |
+| 製品一覧（Products） | `GET https://api.cardvault.fabtcg.com/carddb/api/v1/product-groups-products/?page=<n>` | `/products` 画面で使用。初回はクエリなし、続きは `page` でページング。 |
 | ランディング画像 | `GET https://api.cardvault.fabtcg.com/carddb/api/v1/splash-image/` | ホーム表示用。MCP ツールでは未使用。 |
 | API ルート | `GET https://api.cardvault.fabtcg.com/carddb/api/v1/` | 一部公開エンドポイント一覧を返す。 |
 
@@ -21,6 +22,7 @@
 | `search_fab_cards` | `cards.fabtcg.com/api/search/v1/cards/` | `advanced-search` に置換。 |
 | `get_fab_card_prints` | `cards.fabtcg.com/api/fab/v1/prints/` | `card_id/<card_id>/` の `card_prints` を利用。 |
 | `get_card_detail` | `cards.fabtcg.com/card/...` の HTML スクレイピング | `card_id/<card_id>/` の JSON を直接利用（スクレイピング廃止）。 |
+| `get_fab_products` | なし（新規） | `product-groups-products/` を利用し、Products 画面相当の一覧を返す。 |
 
 ### 重要なフィールド差分
 - 旧 `search` の `display_name` / `url` は新 API にはない。
@@ -65,6 +67,7 @@
 - 旧 API では存在したが新 API にない値（`display_name` など）は互換のために代替値で埋める。
 - `card_id/<card_id>/` が `200 + results: []` を返すケースがあるため、空配列を明示的にハンドリングする。
 - `advanced-search` のレスポンスは印刷単位寄りなので、必要に応じて同一 `card_id` の重複を許容/抑制する方針を実装前に決める。
+- `product-groups-products` はページング (`page`) を返す。`page` が範囲外だと `404 {"detail":"Invalid page."}` になるため、呼び出し側でのハンドリングが必要。
 - 実装後は `cheerio` の依存削除可否を確認する。
 
 ## 実装後の検証項目（予定）
@@ -80,6 +83,8 @@
   - `search_fab_cards` -> `advanced-search/`
   - `get_fab_card_prints` -> `card_id/<card_id>/` の `card_prints`
   - `get_card_detail` -> `card_id/<card_id>/` JSON から詳細を構築
+- `get_fab_products` を追加。
+  - `product-groups-products/` を呼び、`page` 付きページング情報と製品グループ一覧を返す
 - `get_card_detail` の HTML スクレイピング（`cheerio`）はコード上で撤廃済み。
 
 ## 実装後の検証結果（このブランチ）
