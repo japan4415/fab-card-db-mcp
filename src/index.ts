@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
-import { z } from "zod";
 import axios from "axios";
 import pino from "pino";
+import { z } from "zod";
 
 const CARDVAULT_API_BASE = "https://api.cardvault.fabtcg.com/carddb/api/v1";
 const CARDVAULT_WEB_BASE = "https://cardvault.fabtcg.com";

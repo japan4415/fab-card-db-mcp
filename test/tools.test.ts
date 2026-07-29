@@ -5,7 +5,7 @@
  * responses. Covers normal cases, edge cases, and error handling
  * documented in docs/cardvault-api-analysis.md.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mcpModernRequest, parseModernResult } from "./helpers";
 
 // Mock axios

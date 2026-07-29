@@ -4,7 +4,7 @@
  * Verifies that the worker's fetch handler routes requests correctly
  * and returns appropriate status codes for all endpoints.
  */
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { rawRequest } from "./helpers";
 
 describe("HTTP routing", () => {

@@ -1,3 +1,4 @@
+import Ajv2020 from "ajv/dist/2020";
 /**
  * MCP 2026-07-28 protocol conformance tests.
  *
@@ -9,8 +10,7 @@
  * the spec, the test MUST remain as-is. The failure is reported as an
  * implementation bug, not a test bug.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import Ajv2020 from "ajv/dist/2020";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mcpModernRequest, parseModernResult, rawRequest } from "./helpers";
 
 // Mock axios to prevent real network calls
