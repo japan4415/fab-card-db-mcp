@@ -1,13 +1,8 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
-  "postUpgradeTasks": {
-    "executionMode": "branch",
-    "commands": [
-      "corepack enable",
-      "yarn install --mode=update-lockfile"
-    ]
-  }
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended"],
+	"postUpgradeTasks": {
+		"executionMode": "branch",
+		"commands": ["corepack enable", "yarn install --mode=update-lockfile"]
+	}
 }
