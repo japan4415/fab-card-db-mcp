@@ -14,27 +14,27 @@
 1. Node.js 20 以上を使用し、`corepack enable` で Yarn 4 を有効にします。
 2. 依存関係は `yarn install` でインストールしてください（npm や pnpm は使用しません）。
 3. Wrangler は `yarn dev` や `yarn deploy` のように Yarn 経由で実行します。
-4. Durable Object やバインディングの型は `yarn cf-typegen` で再生成できます。
+4. Worker の型は `yarn cf-typegen` で再生成できます。
    `worker-configuration.d.ts` はこのコマンドで更新してください。
 5. Cloudflare のシークレットや環境変数は Wrangler の `secret`/`vars` 機能を利用し、リポジトリに平文で保存しないでください。
 
 ## 実装指針
 ### プロジェクト構造
-- エントリーポイントは `src/index.ts` で、`MyMCP` Durable Object が MCP サーバーのツールを公開します。
-- Durable Object `MyMCP` は `wrangler.jsonc` の `durable_objects.bindings` と同期している必要があります。
-  クラス名やバインディング名を変更した場合は双方を更新してください。
+- エントリーポイントは `src/index.ts` です。`createMcpHandler()`（`agents/mcp/server`）を使ったステートレス構成で MCP サーバーのツールを公開します。Durable Object は使用していません。
+- MCP SDK は `@modelcontextprotocol/server`（v2.0.0）を使用し、ツールは `registerTool()` API で登録します。各ツールには `title`、`outputSchema`、`structuredContent` を定義してください。
+- 入力バリデーションには `zod`（v4）を使用します。
 - 型定義は `worker-configuration.d.ts` と `src/index.ts` のインターフェースが中心です。API から取得するデータ構造を変更したら型も更新しましょう。
 
 ### コーディングスタイル
 - フォーマッタとリンターは Biome を使用します。`biome.json` に従い、インデント幅 4、最大行長 100 を守ってください。
 - TypeScript の型は可能な限り厳格に保ち、`any` の使用は必要最小限にとどめます。既存の `Card` や `CardDetail` に収まらない場合は新しい型を追加してください。
-- ツール入力の検証には既存コードと同様に `zod` を利用し、必須・任意フィールドを明示します。
+- ツール入力・出力の検証には `zod`（v4）を利用し、必須・任意フィールドを明示します。ツール追加時は `inputSchema` と `outputSchema` の両方を定義してください。
 - HTTP リクエストには `axios` を利用し、必要なヘッダーやタイムアウトを適切に設定してください。
 - ログは `pino` を用いた構造化ログで出力します。`tool` や `action` などのメタ情報を含め、エラー時は `error` プロパティで詳細を残してください。
-- HTML パースやスクレイピングを行う場合は既存と同じく `cheerio` を利用し、外部 HTML の構造変化に備えて防御的に実装します。
+- 外部データの取得は CardVault JSON API を使用します。HTML スクレイピング（`cheerio`）は廃止されました。
 
 ### 設計上の注意
-- 新しい MCP ツールを追加する際は、ツール名・説明・入力スキーマ・レスポンス形式を既存のパターンにならって定義してください。
+- 新しい MCP ツールを追加する際は、`registerTool()` API を使い、`title`・`description`・`inputSchema`・`outputSchema` を既存のパターンにならって定義してください。ハンドラの戻り値には `content`（テキストフォールバック）と `structuredContent`（構造化データ）の両方を含めてください。
 - API の変更に伴いレスポンス構造が変わる場合は、影響を受けるツールをすべて確認し、互換性を維持できない場合は README に破壊的変更を記載します。
 - ネットワークエラーや外部 API の失敗は例外として投げる前にログへ記録し、ユーザーには理解しやすいメッセージを返してください。
 
@@ -43,7 +43,7 @@
   - `yarn format`
   - `yarn lint:fix`
 - 実行時の挙動に影響する変更（新しいツール、API 呼び出し、ルーティング変更など）を行った場合は `yarn dev` でローカル確認し、手動テスト手順と結果を記録します。
-- Durable Object やバインディングを追加・変更した場合は `yarn cf-typegen` を再実行し、生成ファイルの差分をコミットします。
+- Worker バインディングを追加・変更した場合は `yarn cf-typegen` を再実行し、生成ファイルの差分をコミットします。
 - 外部 API へのアクセスが失敗した場合はリトライやフォールバックの要否を検討し、必要に応じてモックやサンプルレスポンスを用いた検証方法も提示してください。
 
 ## ドキュメント更新
