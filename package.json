@@ -8,12 +8,17 @@
 		"format": "biome format --write .",
 		"lint:fix": "biome lint --apply .",
 		"start": "wrangler dev",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.6.2",
 		"@types/node": "^24.1.0",
+		"ajv": "^8.20.0",
+		"ajv-formats": "^3.0.1",
 		"typescript": "^5.8.3",
+		"vitest": "^4.1.10",
 		"wrangler": "^4.26.0"
 	},
 	"dependencies": {
