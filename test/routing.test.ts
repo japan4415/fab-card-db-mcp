@@ -128,6 +128,50 @@ describe("HTTP routing", () => {
 	});
 
 	// ───────────────────────────────────────
+	// CORS: external Origin headers must not be rejected
+	// ───────────────────────────────────────
+	describe("CORS origin validation", () => {
+		it("POST /mcp with Origin: https://claude.ai is not rejected as 403", async () => {
+			const response = await rawRequest("http://localhost/mcp", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json, text/event-stream",
+					Origin: "https://claude.ai",
+					"MCP-Protocol-Version": "2026-07-28",
+					"MCP-Method": "initialize",
+				},
+				body: JSON.stringify({
+					jsonrpc: "2.0",
+					id: 1,
+					method: "initialize",
+					params: {
+						_meta: {
+							"io.modelcontextprotocol/protocolVersion": "2026-07-28",
+							"io.modelcontextprotocol/clientCapabilities": {},
+						},
+						protocolVersion: "2026-07-28",
+						capabilities: {},
+						clientInfo: { name: "test-client", version: "1.0.0" },
+					},
+				}),
+			});
+			expect(response.status).not.toBe(403);
+		});
+
+		it("OPTIONS /mcp with Origin: https://claude.ai returns CORS headers", async () => {
+			const response = await rawRequest("http://localhost/mcp", {
+				method: "OPTIONS",
+				headers: {
+					Origin: "https://claude.ai",
+				},
+			});
+			expect(response.status).not.toBe(403);
+			expect(response.headers.get("access-control-allow-origin")).toBe("*");
+		});
+	});
+
+	// ───────────────────────────────────────
 	// Unmatched paths
 	// ───────────────────────────────────────
 	describe("unmatched paths", () => {

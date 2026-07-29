@@ -29,7 +29,6 @@ interface Card {
 	power?: string;
 	defense?: string;
 	text?: string;
-	textHtml?: string;
 	typebox?: string;
 }
 
@@ -388,7 +387,6 @@ const CardOutputSchema = z.array(
 		power: z.string().optional(),
 		defense: z.string().optional(),
 		text: z.string().optional(),
-		textHtml: z.string().optional(),
 		typebox: z.string().optional(),
 	}),
 );
@@ -993,8 +991,8 @@ Input:
 // ステートレス MCP ハンドラー
 const mcpHandler = createMcpHandler(() => createServer(), {
 	route: "/mcp",
+	allowedOriginHostnames: "*",
 	corsOptions: {
-		origin: "*",
 		methods: "POST, OPTIONS",
 		headers: "Content-Type, Accept, MCP-Protocol-Version, MCP-Method, MCP-Name",
 	},
