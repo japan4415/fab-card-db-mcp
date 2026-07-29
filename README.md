@@ -1,6 +1,8 @@
 # Flesh and Blood Card Database MCP Server
 
-A Model Context Protocol (MCP) server for searching and retrieving information about Flesh and Blood Trading Card Game (FAB TCG) cards. This server is deployed on Cloudflare Workers and provides tools for card search and print variation lookup.
+> **Breaking Change (MCP 2026-07-28)**: This server has migrated to the MCP 2026-07-28 protocol revision. Legacy SSE endpoints (`/sse`, `/sse/message`) have been removed and will return `404`. **Existing clients must change their connection URL from `/sse` to `/mcp`.** The `initialize` handshake and session management have been removed from the protocol; the server is now fully stateless. Clients using older MCP protocol versions will not be able to connect.
+
+A Model Context Protocol (MCP 2026-07-28) server for searching and retrieving information about Flesh and Blood Trading Card Game (FAB TCG) cards. This server is deployed on Cloudflare Workers as a stateless Streamable HTTP service and provides tools for card search, print variation lookup, card detail retrieval, and product catalog browsing.
 
 ## CardVault API Migration Status
 
@@ -12,29 +14,37 @@ The official FAB card database has moved to `cardvault.fabtcg.com` and uses a ne
 
 ## Features
 
-This MCP server provides the following tools:
+This MCP server provides the following tools. All tools return structured output via `structuredContent` (in addition to the `content` text fallback), conforming to their declared `outputSchema`.
 
-### 1. Card Search (`search_fab_cards`)
+### 1. Search FaB Cards (`search_fab_cards`)
 
-Search for Flesh and Blood cards by name. Returns detailed information about matching cards, including:
+Search for Flesh and Blood cards by name. Returns a structured array of matching cards, including:
 - Card ID and name
 - Card images
 - Card attributes (pitch, cost, power, defense)
 - Card text and type information
 - Links to the official card page
 
-### 2. Print Variations Lookup (`get_fab_card_prints`)
+### 2. Get FaB Card Prints (`get_fab_card_prints`)
 
-Retrieve all print variations of a specific card using its card ID. Returns information such as:
+Retrieve all print variations of a specific card using its card ID. Returns a structured array of prints, including:
 - Print ID and associated card ID
 - Print name and display name
 - Print images (small, normal, large sizes)
 - Layout information
 - Finish types available
 
-### 3. Product Catalog Lookup (`get_fab_products`)
+### 3. Get Card Detail (`get_card_detail`)
 
-Retrieve product groups shown on `cardvault.fabtcg.com/products`, including:
+Get detailed information about a specific card, including non-English text. Returns a structured object containing:
+- Complete card data in English and Japanese (when available)
+- Card attributes (pitch, power, defense, cost)
+- Publication details (set, rarity, artist)
+- All available card variations
+
+### 4. Get FaB Products (`get_fab_products`)
+
+Retrieve product groups from `cardvault.fabtcg.com/products`. Returns a structured object containing:
 - Product group name and type
 - Release dates
 - Nested product entries (slug, language, printed date)
@@ -60,7 +70,7 @@ This project is designed to be deployed on Cloudflare Workers.
 
 2. Install dependencies:
    ```bash
-   npm install
+   yarn install
    ```
 
 3. Authenticate with Cloudflare:
@@ -79,9 +89,9 @@ The server will be deployed to the domain configured in wrangler.jsonc (currentl
 
 ### Endpoints
 
-The server exposes two main endpoints:
-- `/sse` or `/sse/message` - SSE-based MCP endpoint
-- `/mcp` - Regular MCP endpoint
+The server exposes the following endpoints:
+- `POST /mcp` - Streamable HTTP MCP endpoint (MCP 2026-07-28)
+- `GET /.well-known/mcp.json` - MCP server discovery manifest
 
 ### Example Usage
 
@@ -119,34 +129,14 @@ const printVariations = await use_mcp_tool({
 
 ## Connecting with MCP Clients
 
-### Claude Desktop
+This server uses the MCP 2026-07-28 Streamable HTTP transport. Clients that support this protocol revision can connect to:
 
-To connect this MCP server to Claude Desktop:
+- **Streamable HTTP endpoint**: `https://fab-card-db-mcp.discord.jp/mcp`
+- **Discovery manifest**: `https://fab-card-db-mcp.discord.jp/.well-known/mcp.json`
 
-1. Go to Settings > Developer > Edit Config in Claude Desktop
-2. Update the configuration with:
+MCP 2026-07-28 compliant clients can discover the server automatically via the `.well-known/mcp.json` manifest, which advertises the `/mcp` endpoint.
 
-```json
-{
-  "mcpServers": {
-    "fab-cards": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://fab-card-db-mcp.discord.jp/sse"  // Or your deployed URL
-      ]
-    }
-  }
-}
-```
-
-3. Restart Claude Desktop to access the FAB card search tools
-
-### Other MCP Clients
-
-For other MCP clients, configure them to connect to:
-- `https://fab-card-db-mcp.discord.jp/sse` (for SSE-based connections)
-- `https://fab-card-db-mcp.discord.jp/mcp` (for regular MCP connections)
+> **Migration required**: Legacy SSE-based connections (`/sse`) are no longer supported and will return `404`. If you were previously connecting to `https://fab-card-db-mcp.discord.jp/sse`, change your connection URL to `https://fab-card-db-mcp.discord.jp/mcp`. Your client must also support the MCP 2026-07-28 Streamable HTTP transport.
 
 ## License
 
