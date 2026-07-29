@@ -1,6 +1,6 @@
 # Flesh and Blood Card Database MCP Server
 
-> **Breaking Change (MCP 2026-07-28)**: This server has migrated to the MCP 2026-07-28 protocol revision. Legacy SSE endpoints (`/sse`, `/sse/message`) have been removed. Clients must use the Streamable HTTP endpoint (`/mcp`). The `initialize` handshake and session management have been removed from the protocol; the server is now fully stateless. Clients using older MCP protocol versions will not be able to connect.
+> **Breaking Change (MCP 2026-07-28)**: This server has migrated to the MCP 2026-07-28 protocol revision. Legacy SSE endpoints (`/sse`, `/sse/message`) have been removed and will return `404`. **Existing clients must change their connection URL from `/sse` to `/mcp`.** The `initialize` handshake and session management have been removed from the protocol; the server is now fully stateless. Clients using older MCP protocol versions will not be able to connect.
 
 A Model Context Protocol (MCP 2026-07-28) server for searching and retrieving information about Flesh and Blood Trading Card Game (FAB TCG) cards. This server is deployed on Cloudflare Workers as a stateless Streamable HTTP service and provides tools for card search, print variation lookup, card detail retrieval, and product catalog browsing.
 
@@ -136,7 +136,7 @@ This server uses the MCP 2026-07-28 Streamable HTTP transport. Clients that supp
 
 MCP 2026-07-28 compliant clients can discover the server automatically via the `.well-known/mcp.json` manifest, which advertises the `/mcp` endpoint.
 
-> **Note**: Legacy SSE-based connections (`/sse`) are no longer supported. Clients must use the Streamable HTTP endpoint.
+> **Migration required**: Legacy SSE-based connections (`/sse`) are no longer supported and will return `404`. If you were previously connecting to `https://fab-card-db-mcp.discord.jp/sse`, change your connection URL to `https://fab-card-db-mcp.discord.jp/mcp`. Your client must also support the MCP 2026-07-28 Streamable HTTP transport.
 
 ## License
 
