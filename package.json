@@ -10,12 +10,14 @@
 		"start": "wrangler dev",
 		"cf-typegen": "wrangler types",
 		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.6.2",
 		"@types/node": "^24.1.0",
+		"@vitest/coverage-v8": "^4.1.10",
 		"ajv": "^8.20.0",
 		"ajv-formats": "^3.0.1",
 		"typescript": "^5.8.3",
