@@ -93,6 +93,10 @@ The server exposes the following endpoints:
 - `POST /mcp` - Streamable HTTP MCP endpoint (MCP 2026-07-28)
 - `GET /.well-known/mcp.json` - MCP server discovery manifest
 
+### Security
+
+This server intentionally allows all origins (`Access-Control-Allow-Origin: *`) and performs no Origin validation. This is by design: the server is authless and exposes only public card data, so cross-origin requests carry no credential or data-confidentiality risk.
+
 ### Example Usage
 
 When connected to an MCP client, you can use the provided tools as follows:
